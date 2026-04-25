@@ -1,16 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 @import 'tailwindcss';
 
 @layer base {
   :root {
-    color-scheme: light;
+    color-scheme: dark;
+    --app-bg-1: #09090b;
+    --app-bg-2: #18181b;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
   }
 
   body {
-    @apply m-0 bg-slate-100 text-slate-800 antialiased;
-    font-family: Inter, 'Segoe UI', Roboto, Arial, sans-serif;
+    @apply m-0 text-slate-200 antialiased;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: radial-gradient(circle at top right, #1e1b4b, #09090b 40%, #09090b 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
   }
 
   #root {
-    @apply min-h-screen;
+    @apply min-h-screen relative overflow-hidden;
   }
+
+  /* Decorative background blobs */
+  #root::before, #root::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    z-index: -1;
+    opacity: 0.4;
+    animation: pulse 10s infinite alternate;
+  }
+
+  #root::before {
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, #4c1d95, transparent 70%);
+    top: -200px;
+    left: -200px;
+  }
+
+  #root::after {
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, #312e81, transparent 70%);
+    bottom: -100px;
+    right: -100px;
+    animation-delay: 5s;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.3; }
+    100% { transform: scale(1.2); opacity: 0.5; }
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)];
+  }
+
+  .glass-button {
+    @apply relative overflow-hidden bg-slate-800/60 backdrop-blur-md border border-slate-600/50 hover:bg-slate-700/60 hover:border-slate-500/50 transition-all duration-300 rounded-lg text-slate-200 font-medium active:scale-95;
+  }
+
+  .glass-button-primary {
+    @apply relative overflow-hidden bg-indigo-600/80 backdrop-blur-md border border-indigo-400/50 hover:bg-indigo-500/90 hover:border-indigo-300/60 hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all duration-300 rounded-lg text-white font-medium active:scale-95;
+  }
+
+  .glass-input {
+    @apply bg-slate-950/50 border border-slate-700/50 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all backdrop-blur-sm placeholder:text-slate-500;
+  }
+}
+
+/* Custom Scrollbar for matrix/contract panel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.6);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.8);
 }

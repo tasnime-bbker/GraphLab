@@ -48,7 +48,7 @@ function buildEdgeGeometry(
 
   const startX = from.x + ux * NODE_RADIUS + nx * offset
   const startY = from.y + uy * NODE_RADIUS + ny * offset
-  const endPadding = NODE_RADIUS + (directed ? 12 : 2)
+  const endPadding = NODE_RADIUS + (directed ? 14 : 2)
   const endX = to.x - ux * endPadding + nx * offset
   const endY = to.y - uy * endPadding + ny * offset
 
@@ -170,262 +170,318 @@ export function GraphCanvas() {
   }, [graph.edges])
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold text-slate-900">Visual Editor</h2>
-        {interaction.edgeDraftFrom !== null && (
-          <button
-            type="button"
-            className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
-            onClick={() => dispatch({ type: 'CLEAR_EDGE_DRAFT' })}
-          >
-            Cancel Edge Draft
-          </button>
+    <section className="flex flex-col h-full rounded-2xl relative overflow-hidden group">
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none"></div>
+      
+      <div className="p-4 md:p-6 border-b border-slate-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/40 z-10 relative">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+              </svg>
+              Visual Editor
+            </h2>
+            {interaction.edgeDraftFrom !== null && (
+              <button
+                type="button"
+                className="rounded-full border border-amber-500/50 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                onClick={() => dispatch({ type: 'CLEAR_EDGE_DRAFT' })}
+              >
+                Cancel Draft
+              </button>
+            )}
+          </div>
+          <div className="flex flex-col gap-1 text-xs text-slate-400">
+            <p className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Left click empty canvas to add node. Click A then B for edge.</p>
+            <p className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Right click node or double click edge to remove.</p>
+            {graph.weighted && (
+              <p className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Click edge weight to edit. {weightPolicyHint(graph.weightPolicy)}</p>
+            )}
+          </div>
+        </div>
+
+        {weightError !== null && (
+          <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300 shadow-[0_0_15px_rgba(225,29,72,0.15)] flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {weightError}
+          </div>
         )}
       </div>
-      <p className="text-sm text-slate-600">
-        Left click on empty canvas to add nodes.
-        Right click on node to remove it with its corresponding edges.
-      </p>
-      <p className="text-sm text-slate-600">
-        Click node A then node B to create an edge.
-      </p>
-      {graph.weighted && (
-        <p className="mt-1 text-xs text-slate-500">
-          Click an edge weight to edit. {weightPolicyHint(graph.weightPolicy)}
-        </p>
-      )}
-      {weightError !== null && (
-        <p className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-700">
-          {weightError}
-        </p>
-      )}
 
-      <svg
-        ref={svgRef}
-        className="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50"
-        viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
-        onMouseMove={(event) => {
-          if (interaction.edgeDraftFrom === null || svgRef.current === null) {
-            return
-          }
+      <div className="flex-grow relative bg-slate-950/50 overflow-hidden">
+        <svg
+          ref={svgRef}
+          className="w-full h-full cursor-crosshair min-h-[520px]"
+          viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
+          preserveAspectRatio="xMidYMid meet"
+          onMouseMove={(event) => {
+            if (interaction.edgeDraftFrom === null || svgRef.current === null) {
+              return
+            }
 
-          const [x, y] = pointer(event, svgRef.current)
-          setCursorPosition({ x, y })
-        }}
-      >
-        <defs>
-          <marker
-            id="arrow"
-            markerWidth="8"
-            markerHeight="8"
-            refX="7"
-            refY="4"
-            orient="auto"
-          >
-                <path d="M0,0 L8,4 L0,8 z" fill="#334155" />
-          </marker>
-        </defs>
+            const [x, y] = pointer(event, svgRef.current)
+            setCursorPosition({ x, y })
+          }}
+        >
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="1" fill="rgba(99, 102, 241, 0.15)" />
+            </pattern>
+            <marker
+              id="arrow"
+              markerWidth="12"
+              markerHeight="12"
+              refX="10"
+              refY="6"
+              orient="auto"
+            >
+              <path d="M0,2 L10,6 L0,10 L3,6 z" fill="#818cf8" />
+            </marker>
+            <marker
+              id="arrow-selected"
+              markerWidth="12"
+              markerHeight="12"
+              refX="10"
+              refY="6"
+              orient="auto"
+            >
+              <path d="M0,2 L10,6 L0,10 L3,6 z" fill="#c084fc" />
+            </marker>
+            
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            
+            <filter id="glow-selected">
+              <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
 
-                <rect
-                  x={0}
-                  y={0}
-                  width={CANVAS_WIDTH}
-                  height={CANVAS_HEIGHT}
-                  fill="#f8fafc"
+          <rect
+            x={0}
+            y={0}
+            width="100%"
+            height="100%"
+            fill="url(#grid)"
+            onClick={(event) => {
+              if (event.button !== 0 || svgRef.current === null) {
+                return
+              }
+
+              // Need to get coordinates mapping to the viewBox
+              const pt = svgRef.current.createSVGPoint()
+              pt.x = event.clientX
+              pt.y = event.clientY
+              const svgP = pt.matrixTransform(svgRef.current.getScreenCTM()?.inverse())
+
+              dispatch({
+                type: 'ADD_NODE',
+                payload: {
+                  position: {
+                    x: clamp(svgP.x, 20, CANVAS_WIDTH - 20),
+                    y: clamp(svgP.y, 20, CANVAS_HEIGHT - 20),
+                  },
+                },
+              })
+              setEditingEdgeId(null)
+              setWeightError(null)
+            }}
+          />
+
+          {graph.edges.map((edge) => {
+            const from = graph.positions[edge.from]
+            const to = graph.positions[edge.to]
+
+            if (!from || !to) {
+              return null
+            }
+
+            const isSelected = interaction.selectedEdgeId === edge.id
+            const pairKey =
+              edge.from < edge.to ? `${edge.from}-${edge.to}` : `${edge.to}-${edge.from}`
+            const hasReverse = graph.directed && reverseEdgePairs.has(pairKey)
+            const signedOffset =
+              hasReverse && edge.from !== edge.to ? (edge.from < edge.to ? 16 : -16) : 0
+            const geometry = buildEdgeGeometry(from, to, signedOffset, graph.directed)
+
+            return (
+              <g key={edge.id} className="transition-opacity hover:opacity-80">
+                {/* Hit area for easier clicking */}
+                <path
+                  d={geometry.path}
+                  stroke="transparent"
+                  strokeWidth={15}
+                  fill="none"
+                  className="cursor-pointer"
                   onClick={(event) => {
-                    if (event.button !== 0 || svgRef.current === null) {
+                    event.stopPropagation()
+                    dispatch({ type: 'SET_SELECTED_EDGE', payload: { edgeId: edge.id } })
+                  }}
+                  onDoubleClick={(event) => {
+                    event.stopPropagation()
+                    dispatch({ type: 'DELETE_EDGE', payload: { edgeId: edge.id } })
+                  }}
+                />
+                <path
+                  d={geometry.path}
+                  className={`pointer-events-none transition-all duration-300 ${isSelected ? 'stroke-purple-400' : 'stroke-indigo-400/70'}`}
+                  strokeWidth={isSelected ? 3 : 2}
+                  fill="none"
+                  strokeLinecap="round"
+                  filter={isSelected ? "url(#glow-selected)" : ""}
+                  markerEnd={graph.directed ? (isSelected ? 'url(#arrow-selected)' : 'url(#arrow)') : undefined}
+                />
+                
+                {graph.weighted && (
+                  <g className="cursor-pointer" onClick={(event) => {
+                    event.stopPropagation()
+                    startWeightEdit(edge.id, edge.weight)
+                  }}>
+                    <circle
+                      cx={geometry.labelX}
+                      cy={geometry.labelY}
+                      r={14}
+                      fill="#1e1b4b"
+                      stroke={isSelected ? "#c084fc" : "#6366f1"}
+                      strokeWidth={1.5}
+                      className="transition-colors duration-300"
+                    />
+                    {editingEdgeId === edge.id ? (
+                      <foreignObject
+                        x={geometry.labelX - 28}
+                        y={geometry.labelY - 14}
+                        width={56}
+                        height={28}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <input
+                          autoFocus
+                          value={weightDraft}
+                          className="h-7 w-14 rounded bg-slate-900 border border-purple-500 px-1 text-center text-xs font-semibold text-white outline-none focus:ring-1 focus:ring-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.4)]"
+                          onChange={(event) => {
+                            setWeightDraft(event.currentTarget.value)
+                            setWeightError(null)
+                          }}
+                          onBlur={() => commitWeight(edge.id)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              commitWeight(edge.id)
+                            }
+                            if (event.key === 'Escape') {
+                              setEditingEdgeId(null)
+                              setWeightError(null)
+                            }
+                          }}
+                        />
+                      </foreignObject>
+                    ) : (
+                      <text
+                        x={geometry.labelX}
+                        y={geometry.labelY + 4}
+                        textAnchor="middle"
+                        className="pointer-events-none fill-white text-[12px] font-bold"
+                      >
+                        {edge.weight}
+                      </text>
+                    )}
+                  </g>
+                )}
+              </g>
+            )
+          })}
+
+          {edgeDraftPosition !== null && cursorPosition !== null && (
+            <line
+              x1={edgeDraftPosition.x}
+              y1={edgeDraftPosition.y}
+              x2={cursorPosition.x}
+              y2={cursorPosition.y}
+              className="stroke-indigo-400"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+              filter="url(#glow)"
+            />
+          )}
+
+          {graph.nodes.map((nodeId) => {
+            const position = graph.positions[nodeId]
+            if (!position) {
+              return null
+            }
+
+            const isSelected = interaction.selectedNodeId === nodeId
+            const isDraftStart = interaction.edgeDraftFrom === nodeId
+
+            return (
+              <g
+                key={nodeId}
+                transform={`translate(${position.x} ${position.y})`}
+                className="node-wrapper group/node"
+                data-node-id={nodeId}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  dispatch({ type: 'DELETE_NODE', payload: { nodeId } })
+                  setEditingEdgeId(null)
+                }}
+              >
+                <circle
+                  r={NODE_RADIUS}
+                  className={`cursor-pointer transition-all duration-300 group-hover/node:scale-110 ${
+                    isSelected || isDraftStart
+                      ? 'fill-indigo-900 stroke-purple-400'
+                      : 'fill-slate-900 stroke-indigo-500 hover:stroke-indigo-400'
+                  }`}
+                  strokeWidth={isSelected || isDraftStart ? 3 : 2}
+                  filter={isSelected || isDraftStart ? "url(#glow-selected)" : "url(#glow)"}
+                  onClick={(event) => {
+                    event.stopPropagation()
+
+                    if (interaction.edgeDraftFrom === null) {
+                      dispatch({ type: 'START_EDGE_DRAFT', payload: { from: nodeId } })
+                      dispatch({ type: 'SET_SELECTED_NODE', payload: { nodeId } })
+                      setEditingEdgeId(null)
                       return
                     }
 
-                    const [x, y] = pointer(event, svgRef.current)
+                    if (interaction.edgeDraftFrom === nodeId) {
+                      dispatch({ type: 'CLEAR_EDGE_DRAFT' })
+                      return
+                    }
+
                     dispatch({
-                      type: 'ADD_NODE',
+                      type: 'ADD_EDGE',
                       payload: {
-                        position: {
-                          x: clamp(x, 20, CANVAS_WIDTH - 20),
-                          y: clamp(y, 20, CANVAS_HEIGHT - 20),
-                        },
+                        from: interaction.edgeDraftFrom,
+                        to: nodeId,
                       },
                     })
-                    setEditingEdgeId(null)
-                    setWeightError(null)
                   }}
                 />
-
-        {graph.edges.map((edge) => {
-          const from = graph.positions[edge.from]
-          const to = graph.positions[edge.to]
-
-          if (!from || !to) {
-            return null
-          }
-
-          const isSelected = interaction.selectedEdgeId === edge.id
-          const pairKey =
-            edge.from < edge.to ? `${edge.from}-${edge.to}` : `${edge.to}-${edge.from}`
-          const hasReverse = graph.directed && reverseEdgePairs.has(pairKey)
-          const signedOffset =
-            hasReverse && edge.from !== edge.to ? (edge.from < edge.to ? 16 : -16) : 0
-          const geometry = buildEdgeGeometry(from, to, signedOffset, graph.directed)
-
-          return (
-            <g key={edge.id}>
-              <path
-                d={geometry.path}
-                className={isSelected ? 'cursor-pointer stroke-indigo-600' : 'cursor-pointer stroke-slate-700'}
-                strokeWidth={isSelected ? 3 : 2.5}
-                fill="none"
-                strokeLinecap="round"
-                markerEnd={graph.directed ? 'url(#arrow)' : undefined}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  dispatch({ type: 'SET_SELECTED_EDGE', payload: { edgeId: edge.id } })
-                }}
-                onDoubleClick={(event) => {
-                  event.stopPropagation()
-                  dispatch({ type: 'DELETE_EDGE', payload: { edgeId: edge.id } })
-                }}
-              />
-              {graph.weighted && (
-                <>
-                  <circle
-                    cx={geometry.labelX}
-                    cy={geometry.labelY - 2}
-                    r={14}
-                    fill="#ffffff"
-                    stroke="#cbd5e1"
-                    strokeWidth={1.5}
-                  />
-                  {editingEdgeId === edge.id ? (
-                    <foreignObject
-                      x={geometry.labelX - 28}
-                      y={geometry.labelY - 14}
-                      width={56}
-                      height={28}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <input
-                        autoFocus
-                        value={weightDraft}
-                        className="h-7 w-14 rounded border border-indigo-400 bg-white px-1 text-center text-xs font-semibold text-slate-900 outline-none"
-                        onChange={(event) => {
-                          setWeightDraft(event.currentTarget.value)
-                          setWeightError(null)
-                        }}
-                        onBlur={() => commitWeight(edge.id)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            commitWeight(edge.id)
-                          }
-                          if (event.key === 'Escape') {
-                            setEditingEdgeId(null)
-                            setWeightError(null)
-                          }
-                        }}
-                      />
-                    </foreignObject>
-                  ) : (
-                    <text
-                      x={geometry.labelX}
-                      y={geometry.labelY + 2}
-                      textAnchor="middle"
-                      className="cursor-pointer fill-slate-900 text-[11px] font-bold"
-                      style={{ paintOrder: 'stroke', stroke: '#ffffff', strokeWidth: 3 }}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        startWeightEdit(edge.id, edge.weight)
-                      }}
-                    >
-                      {edge.weight}
-                    </text>
-                  )}
-                </>
-              )}
-            </g>
-          )
-        })}
-
-        {edgeDraftPosition !== null && cursorPosition !== null && (
-          <line
-            x1={edgeDraftPosition.x}
-            y1={edgeDraftPosition.y}
-            x2={cursorPosition.x}
-            y2={cursorPosition.y}
-            className="stroke-indigo-300"
-            strokeWidth={2}
-            strokeDasharray="5 4"
-          />
-        )}
-
-        {graph.nodes.map((nodeId) => {
-          const position = graph.positions[nodeId]
-          if (!position) {
-            return null
-          }
-
-          const isSelected = interaction.selectedNodeId === nodeId
-          const isDraftStart = interaction.edgeDraftFrom === nodeId
-
-          return (
-            <g
-              key={nodeId}
-              transform={`translate(${position.x} ${position.y})`}
-              className="node-wrapper"
-              data-node-id={nodeId}
-              onContextMenu={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                dispatch({ type: 'DELETE_NODE', payload: { nodeId } })
-                setEditingEdgeId(null)
-              }}
-            >
-              <circle
-                r={20}
-                className={
-                  isSelected || isDraftStart
-                    ? 'cursor-pointer fill-indigo-600 stroke-indigo-900'
-                    : 'cursor-pointer fill-indigo-500 stroke-indigo-800'
-                }
-                strokeWidth={isSelected || isDraftStart ? 3 : 2.5}
-                onClick={(event) => {
-                  event.stopPropagation()
-
-                  if (interaction.edgeDraftFrom === null) {
-                    dispatch({ type: 'START_EDGE_DRAFT', payload: { from: nodeId } })
-                    dispatch({ type: 'SET_SELECTED_NODE', payload: { nodeId } })
-                    setEditingEdgeId(null)
-                    return
-                  }
-
-                  if (interaction.edgeDraftFrom === nodeId) {
-                    dispatch({ type: 'CLEAR_EDGE_DRAFT' })
-                    return
-                  }
-
-                  dispatch({
-                    type: 'ADD_EDGE',
-                    payload: {
-                      from: interaction.edgeDraftFrom,
-                      to: nodeId,
-                    },
-                  })
-                }}
-              />
-              <text
-                className="pointer-events-none fill-white text-[12px] font-bold"
-                textAnchor="middle"
-                dominantBaseline="middle"
-              >
-                {nodeId}
-              </text>
-            </g>
-          )
-        })}
-      </svg>
+                <text
+                  className="pointer-events-none fill-slate-200 text-[13px] font-bold"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  dy="1"
+                >
+                  {nodeId}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
+      </div>
     </section>
   )
 }
-
-
-
