@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useEffect, useRef, useCallback } from 'react';
 
 type ShortcutCallback = (e: KeyboardEvent) => void;
 type ShortcutRegistry = Map<string, ShortcutCallback[]>;

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 
 interface EdgeFlowParticlesProps {
-  pathRef: React.RefObject<SVGPathElement>;
+  pathRef: React.RefObject<SVGPathElement | null>;
   particleCount?: number;
   speed?: number;
   color?: string;
@@ -16,12 +16,12 @@ export const EdgeFlowParticles: React.FC<EdgeFlowParticlesProps> = ({
   isActive = true,
 }) => {
   const groupRef = useRef<SVGGElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
   const progressRef = useRef<number[]>(Array(particleCount).fill(0).map((_, i) => (i / particleCount)));
 
   useEffect(() => {
     if (!isActive || !pathRef.current || !groupRef.current) {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
       return;
     }
     
@@ -53,7 +53,7 @@ export const EdgeFlowParticles: React.FC<EdgeFlowParticlesProps> = ({
 
     animationRef.current = requestAnimationFrame(animate);
     return () => {
-      if (animationRef.current) {
+      if (animationRef.current !== null) {
         cancelAnimationFrame(animationRef.current);
       }
     };

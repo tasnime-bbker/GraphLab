@@ -34,6 +34,22 @@ export function historyReducer(state: HistoryState, action: HistoryAction): Hist
     }
   }
 
+  if (action.type === 'JUMP_TO') {
+    const timeline = [...past, present, ...future]
+    if (timeline.length === 0) {
+      return state
+    }
+
+    const targetIndex = Math.max(0, Math.min(action.payload.index, timeline.length - 1))
+    const nextPresent = timeline[targetIndex]
+
+    return {
+      past: timeline.slice(0, targetIndex),
+      present: nextPresent,
+      future: timeline.slice(targetIndex + 1),
+    }
+  }
+
   // Handle standard graph actions
   const nextPresent = graphReducer(present, action)
   
@@ -42,7 +58,7 @@ export function historyReducer(state: HistoryState, action: HistoryAction): Hist
 
   // For selection or draft actions, we don't necessarily want to record history
   // unless the user explicitly wants selection history. Usually we only record data changes.
-  const isDataChange = !['SET_SELECTED_NODE', 'SET_SELECTED_EDGE', 'START_EDGE_DRAFT', 'CLEAR_EDGE_DRAFT'].includes(action.type)
+  const isDataChange = !['SET_SELECTED_NODE', 'SET_SELECTED_EDGE', 'START_EDGE_DRAFT', 'CLEAR_EDGE_DRAFT', 'JUMP_TO'].includes(action.type)
 
   if (!isDataChange) {
     return {

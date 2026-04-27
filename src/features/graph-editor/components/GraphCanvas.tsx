@@ -7,14 +7,30 @@ import {
   parseWeightInput,
   weightPolicyHint,
 } from '../../graph/model/weightPolicy'
-import { useGraphDispatch, useGraphState } from '../../graph/state/useGraphStore'
+import {
+  degreeOfNode,
+  detectCycle,
+  diffGraphStates,
+  findComponents,
+  neighborsOfNode,
+  shortestPathBetweenNodes,
+} from '../../graph/state/selectors'
+import { useGraphDispatch, useGraphHistory, useGraphState } from '../../graph/state/useGraphStore'
 import { EdgeFlowParticles } from './EdgeFlowParticles'
 import { ParticleBurst } from './ParticleBurst'
 import { EdgePulse } from './EdgePulse'
 import { GraphMetrics } from './GraphMetrics'
 import { SnapGuides } from './SnapGuides'
+import { AlgorithmCinemaPanel } from './AlgorithmCinemaPanel'
 import { calculateSnap } from '../hooks/useMagneticSnap'
 import { useShortcut } from '../../../shared/hooks/useShortcut'
+import {
+  buildCinemaProgram,
+  speedToInterval,
+  type CinemaAlgorithm,
+  type CinemaProgram,
+  type CinemaStep,
+} from '../utils/algorithmCinema'
 import './GraphCanvas.css'
 
 const CANVAS_WIDTH = 900
@@ -25,6 +41,21 @@ interface EdgeGeometry {
   path: string
   labelX: number
   labelY: number
+}
+
+interface QueryHighlights {
+  nodes: number[]
+  edges: string[]
+  color: string
+  message: string
+  components: number[][]
+}
+
+interface HistoryDiffOverlay {
+  addedNodes: number[]
+  removedNodes: number[]
+  addedEdges: string[]
+  removedEdges: string[]
 }
 
 
@@ -227,6 +258,7 @@ function EdgeItem({
 export function GraphCanvas() {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const dispatch = useGraphDispatch()
+  const history = useGraphHistory()
   const { graph, interaction } = useGraphState()
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(
     null,
@@ -237,11 +269,108 @@ export function GraphCanvas() {
   const [bursts, setBursts] = useState<{ id: number; x: number; y: number }[]>([])
   const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null })
   const [transform, setTransform] = useState({ k: 1, x: 0, y: 0 })
-  
+  const [flashingEdgeIds, setFlashingEdgeIds] = useState<string[]>([])
+  const [queryInput, setQueryInput] = useState('')
+  const [queryHighlights, setQueryHighlights] = useState<QueryHighlights | null>(null)
+  const [cinemaAlgorithm, setCinemaAlgorithm] = useState<CinemaAlgorithm>('BFS')
+  const [cinemaSourceNode, setCinemaSourceNode] = useState<number | null>(graph.nodes[0] ?? null)
+  const [cinemaTargetNode, setCinemaTargetNode] = useState<number | null>(graph.nodes[1] ?? graph.nodes[0] ?? null)
+  const [cinemaProgram, setCinemaProgram] = useState<CinemaProgram | null>(null)
+  const [cinemaStepIndex, setCinemaStepIndex] = useState(0)
+  const [cinemaPlaying, setCinemaPlaying] = useState(false)
+  const [cinemaSpeed, setCinemaSpeed] = useState(1)
+
+  const cycleFlashTimeoutRef = useRef<number | null>(null)
+  const queryTimeoutRef = useRef<number | null>(null)
+  const playbackIntervalRef = useRef<number | null>(null)
+  const previousEdgesRef = useRef(graph.edges)
+
   const positionsRef = useRef(graph.positions)
   useEffect(() => {
     positionsRef.current = graph.positions
   }, [graph.positions])
+
+  useEffect(() => {
+    if (graph.nodes.length === 0) {
+      setCinemaSourceNode(null)
+      setCinemaTargetNode(null)
+      return
+    }
+
+    if (cinemaSourceNode === null || !graph.nodes.includes(cinemaSourceNode)) {
+      setCinemaSourceNode(graph.nodes[0])
+    }
+
+    if (
+      cinemaTargetNode === null ||
+      !graph.nodes.includes(cinemaTargetNode) ||
+      (graph.nodes.length > 1 && cinemaTargetNode === cinemaSourceNode)
+    ) {
+      const fallback = graph.nodes.find((nodeId) => nodeId !== (cinemaSourceNode ?? graph.nodes[0]))
+      setCinemaTargetNode(fallback ?? graph.nodes[0])
+    }
+  }, [cinemaSourceNode, cinemaTargetNode, graph.nodes])
+
+  useEffect(() => {
+    if (!cinemaProgram || !cinemaPlaying) {
+      if (playbackIntervalRef.current !== null) {
+        window.clearInterval(playbackIntervalRef.current)
+        playbackIntervalRef.current = null
+      }
+      return
+    }
+
+    playbackIntervalRef.current = window.setInterval(() => {
+      setCinemaStepIndex((index) => {
+        const finalIndex = cinemaProgram.steps.length - 1
+        if (index >= finalIndex) {
+          setCinemaPlaying(false)
+          return finalIndex
+        }
+        return index + 1
+      })
+    }, speedToInterval(cinemaSpeed))
+
+    return () => {
+      if (playbackIntervalRef.current !== null) {
+        window.clearInterval(playbackIntervalRef.current)
+        playbackIntervalRef.current = null
+      }
+    }
+  }, [cinemaPlaying, cinemaProgram, cinemaSpeed])
+
+  useEffect(() => {
+    if (cinemaProgram === null) {
+      return
+    }
+
+    const nextSignature = buildCinemaProgram(
+      graph,
+      cinemaProgram.algorithm,
+      cinemaProgram.source,
+      cinemaProgram.target,
+    ).graphSignature
+
+    if (nextSignature !== cinemaProgram.graphSignature) {
+      setCinemaProgram(null)
+      setCinemaPlaying(false)
+      setCinemaStepIndex(0)
+    }
+  }, [cinemaProgram, graph])
+
+  useEffect(() => {
+    return () => {
+      if (cycleFlashTimeoutRef.current !== null) {
+        window.clearTimeout(cycleFlashTimeoutRef.current)
+      }
+      if (queryTimeoutRef.current !== null) {
+        window.clearTimeout(queryTimeoutRef.current)
+      }
+      if (playbackIntervalRef.current !== null) {
+        window.clearInterval(playbackIntervalRef.current)
+      }
+    }
+  }, [])
 
   useShortcut('Escape', () => {
     if (interaction.edgeDraftFrom !== null) {
@@ -292,6 +421,119 @@ export function GraphCanvas() {
     dispatch({ type: 'REDO' })
   })
 
+  useEffect(() => {
+    const previousEdges = previousEdgesRef.current
+    const previousIds = new Set(previousEdges.map((edge) => edge.id))
+    const addedEdges = graph.edges.filter((edge) => !previousIds.has(edge.id))
+
+    if (addedEdges.length > 0) {
+      const previousOnly = graph.edges.filter((edge) => !addedEdges.some((added) => added.id === edge.id))
+
+      for (const added of addedEdges) {
+        const path = detectCycle(previousOnly, added.from, added.to, graph.directed)
+        if (path !== null) {
+          setFlashingEdgeIds([...path, added.id])
+          if (cycleFlashTimeoutRef.current !== null) {
+            window.clearTimeout(cycleFlashTimeoutRef.current)
+          }
+          cycleFlashTimeoutRef.current = window.setTimeout(() => {
+            setFlashingEdgeIds([])
+          }, 1000)
+          break
+        }
+      }
+    }
+
+    previousEdgesRef.current = graph.edges
+  }, [graph.directed, graph.edges])
+
+  function runQueryCommand(rawInput: string) {
+    const input = rawInput.trim()
+    if (input.length === 0) {
+      setQueryHighlights(null)
+      return
+    }
+
+    const match = /^(path|neighbors|degree|components)\s*(.*)$/i.exec(input)
+    if (match === null) {
+      setQueryHighlights({
+        nodes: [],
+        edges: [],
+        color: '#f87171',
+        message: 'Unknown command. Use: path, neighbors, degree, components.',
+        components: [],
+      })
+      return
+    }
+
+    const command = match[1].toLowerCase()
+    const args = match[2].trim().split(/\s+/).filter((token) => token.length > 0)
+
+    if (command === 'components') {
+      const components = findComponents(graph)
+      setQueryHighlights({
+        nodes: [],
+        edges: [],
+        color: '#22d3ee',
+        message: `Found ${components.length} connected component(s).`,
+        components,
+      })
+    } else if (command === 'neighbors') {
+      const nodeId = Number(args[0])
+      const neighbors = neighborsOfNode(graph, nodeId)
+      const edges = graph.edges
+        .filter((edge) => edge.from === nodeId || edge.to === nodeId)
+        .map((edge) => edge.id)
+      setQueryHighlights({
+        nodes: [nodeId, ...neighbors],
+        edges,
+        color: '#34d399',
+        message: `Neighbors(${nodeId}) = ${neighbors.join(', ') || 'none'}.`,
+        components: [],
+      })
+    } else if (command === 'degree') {
+      const nodeId = Number(args[0])
+      const degree = degreeOfNode(graph, nodeId)
+      setQueryHighlights({
+        nodes: [nodeId],
+        edges: graph.edges
+          .filter((edge) => edge.from === nodeId || edge.to === nodeId)
+          .map((edge) => edge.id),
+        color: '#fbbf24',
+        message: `Degree(${nodeId}) = ${degree}.`,
+        components: [],
+      })
+    } else if (command === 'path') {
+      const source = Number(args[0])
+      const target = Number(args[1])
+      const path = shortestPathBetweenNodes(graph, source, target)
+      if (path === null) {
+        setQueryHighlights({
+          nodes: [source, target],
+          edges: [],
+          color: '#f87171',
+          message: `No path from ${source} to ${target}.`,
+          components: [],
+        })
+      } else {
+        setQueryHighlights({
+          nodes: path.nodeIds,
+          edges: path.edgeIds,
+          color: '#4ade80',
+          message: `Shortest path ${source} -> ${target} (distance ${path.distance}).`,
+          components: [],
+        })
+      }
+    }
+
+    if (queryTimeoutRef.current !== null) {
+      window.clearTimeout(queryTimeoutRef.current)
+    }
+    queryTimeoutRef.current = window.setTimeout(() => {
+      setQueryHighlights(null)
+    }, 5000)
+  }
+
   function startWeightEdit(edgeId: string, currentWeight: number) {
     setEditingEdgeId(edgeId)
     setWeightDraft(String(currentWeight))
@@ -315,6 +557,39 @@ export function GraphCanvas() {
     setEditingEdgeId(null)
     setWeightDraft('')
     setWeightError(null)
+  }
+
+  function runCinema() {
+    if (cinemaSourceNode === null) {
+      return
+    }
+
+    const program = buildCinemaProgram(
+      graph,
+      cinemaAlgorithm,
+      cinemaSourceNode,
+      cinemaTargetNode ?? undefined,
+    )
+
+    setCinemaProgram(program)
+    setCinemaStepIndex(0)
+    setCinemaPlaying(false)
+  }
+
+  function scrubCinema(index: number) {
+    if (!cinemaProgram) {
+      return
+    }
+    const bounded = Math.max(0, Math.min(index, cinemaProgram.steps.length - 1))
+    setCinemaStepIndex(bounded)
+    setCinemaPlaying(false)
+  }
+
+  function stepCinema(delta: number) {
+    if (!cinemaProgram) {
+      return
+    }
+    scrubCinema(cinemaStepIndex + delta)
   }
 
   useEffect(() => {
@@ -412,6 +687,36 @@ export function GraphCanvas() {
     return pairSet
   }, [graph.edges])
 
+  const currentCinemaStep: CinemaStep | null =
+    cinemaProgram !== null && cinemaProgram.steps.length > 0
+      ? cinemaProgram.steps[Math.max(0, Math.min(cinemaStepIndex, cinemaProgram.steps.length - 1))]
+      : null
+
+  const edgeGeometryById = useMemo(() => {
+    const map = new Map<string, EdgeGeometry>()
+    for (const edge of graph.edges) {
+      const from = graph.positions[edge.from]
+      const to = graph.positions[edge.to]
+      if (!from || !to) {
+        continue
+      }
+      const pairKey = edge.from < edge.to ? `${edge.from}-${edge.to}` : `${edge.to}-${edge.from}`
+      const hasReverse = graph.directed && reverseEdgePairs.has(pairKey)
+      const signedOffset =
+        hasReverse && edge.from !== edge.to ? (edge.from < edge.to ? 16 : -16) : 0
+      map.set(edge.id, buildEdgeGeometry(from, to, signedOffset, graph.directed))
+    }
+    return map
+  }, [graph.directed, graph.edges, graph.positions, reverseEdgePairs])
+
+  const historyDiff: HistoryDiffOverlay = useMemo(() => {
+    const previous = history.past[history.past.length - 1]
+    if (!previous) {
+      return { addedNodes: [], removedNodes: [], addedEdges: [], removedEdges: [] }
+    }
+    return diffGraphStates(previous.graph, graph)
+  }, [graph, history.past])
+
   return (
     <section className="flex flex-col h-full rounded-2xl relative overflow-hidden group">
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none"></div>
@@ -452,6 +757,77 @@ export function GraphCanvas() {
             </svg>
             {weightError}
           </div>
+        )}
+      </div>
+
+      <div className="border-b border-slate-700/40 bg-slate-900/35 p-3 md:p-4 space-y-3">
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            runQueryCommand(queryInput)
+          }}
+        >
+          <input
+            value={queryInput}
+            onChange={(event) => setQueryInput(event.currentTarget.value)}
+            placeholder="Query: path 1 5 | neighbors 3 | degree 4 | components"
+            className="glass-input flex-1 px-3 py-1.5 text-xs"
+          />
+          <button type="submit" className="glass-button px-3 py-1 text-xs">
+            Run Query
+          </button>
+          <button
+            type="button"
+            className="glass-button px-3 py-1 text-xs"
+            onClick={() => {
+              setQueryInput('')
+              setQueryHighlights(null)
+            }}
+          >
+            Clear
+          </button>
+        </form>
+
+        <AlgorithmCinemaPanel
+          nodes={graph.nodes}
+          algorithm={cinemaAlgorithm}
+          sourceNode={cinemaSourceNode}
+          targetNode={cinemaTargetNode}
+          speed={cinemaSpeed}
+          playing={cinemaPlaying}
+          stepCount={cinemaProgram?.steps.length ?? 0}
+          currentIndex={cinemaStepIndex}
+          narration={currentCinemaStep?.narration ?? 'Build steps to start playback.'}
+          onAlgorithmChange={(value) => {
+            setCinemaAlgorithm(value)
+            setCinemaProgram(null)
+            setCinemaStepIndex(0)
+            setCinemaPlaying(false)
+          }}
+          onSourceChange={(value) => setCinemaSourceNode(value)}
+          onTargetChange={(value) => setCinemaTargetNode(value)}
+          onSpeedChange={(value) => setCinemaSpeed(value)}
+          onRun={runCinema}
+          onPlayPause={() => {
+            if (!cinemaProgram) {
+              return
+            }
+            setCinemaPlaying((playing) => !playing)
+          }}
+          onStepBack={() => stepCinema(-1)}
+          onStepForward={() => stepCinema(1)}
+          onRewind={() => scrubCinema(0)}
+          onFastForward={() => {
+            if (cinemaProgram) {
+              scrubCinema(cinemaProgram.steps.length - 1)
+            }
+          }}
+          onScrub={scrubCinema}
+        />
+
+        {queryHighlights !== null && (
+          <p className="text-xs text-slate-300">{queryHighlights.message}</p>
         )}
       </div>
 
@@ -565,6 +941,39 @@ export function GraphCanvas() {
             
             <SnapGuides x={guides.x} y={guides.y} bounds={{ w: 10000, h: 10000 }} />
 
+            {queryHighlights?.components.map((component, index) => {
+              const points = component
+                .map((nodeId) => graph.positions[nodeId])
+                .filter((position): position is { x: number; y: number } => typeof position === 'object')
+
+              if (points.length < 2) {
+                return null
+              }
+
+              const minX = Math.min(...points.map((point) => point.x)) - 28
+              const maxX = Math.max(...points.map((point) => point.x)) + 28
+              const minY = Math.min(...points.map((point) => point.y)) - 28
+              const maxY = Math.max(...points.map((point) => point.y)) + 28
+              const palette = ['#818cf8', '#34d399', '#fbbf24', '#fb7185', '#22d3ee']
+              const color = palette[index % palette.length]
+
+              return (
+                <rect
+                  key={`component-${index}`}
+                  x={minX}
+                  y={minY}
+                  width={maxX - minX}
+                  height={maxY - minY}
+                  rx={24}
+                  fill={color}
+                  fillOpacity={0.09}
+                  stroke={color}
+                  strokeOpacity={0.35}
+                  strokeDasharray="6 4"
+                />
+              )
+            })}
+
           {graph.edges.map((edge) => {
             const from = graph.positions[edge.from]
             const to = graph.positions[edge.to]
@@ -600,6 +1009,208 @@ export function GraphCanvas() {
             )
           })}
 
+          {historyDiff.addedEdges.map((edgeId) => {
+            const geometry = edgeGeometryById.get(edgeId)
+            if (!geometry) {
+              return null
+            }
+            return (
+              <path
+                key={`added-edge-${edgeId}`}
+                d={geometry.path}
+                fill="none"
+                stroke="#4ade80"
+                strokeWidth={4}
+                strokeLinecap="round"
+                opacity={0.5}
+                className="history-added-edge"
+              />
+            )
+          })}
+
+          {historyDiff.removedEdges.map((edgeId) => {
+            const previous = history.past[history.past.length - 1]
+            const edge = previous?.graph.edges.find((candidate) => candidate.id === edgeId)
+            if (!edge || !previous) {
+              return null
+            }
+            const from = previous.graph.positions[edge.from]
+            const to = previous.graph.positions[edge.to]
+            if (!from || !to) {
+              return null
+            }
+            const geometry = buildEdgeGeometry(from, to, 0, previous.graph.directed)
+            return (
+              <path
+                key={`removed-edge-${edgeId}`}
+                d={geometry.path}
+                fill="none"
+                stroke="#f87171"
+                strokeWidth={3}
+                strokeDasharray="6 4"
+                opacity={0.45}
+                className="history-removed-edge"
+              />
+            )
+          })}
+
+          {queryHighlights?.edges.map((edgeId) => {
+            const geometry = edgeGeometryById.get(edgeId)
+            if (!geometry) {
+              return null
+            }
+            return (
+              <path
+                key={`query-edge-${edgeId}`}
+                d={geometry.path}
+                fill="none"
+                stroke={queryHighlights.color}
+                strokeWidth={4.5}
+                strokeLinecap="round"
+                opacity={0.8}
+                className="query-highlight-pulse"
+              />
+            )
+          })}
+
+          {flashingEdgeIds.map((edgeId) => {
+            const geometry = edgeGeometryById.get(edgeId)
+            if (!geometry) {
+              return null
+            }
+            return (
+              <path
+                key={`cycle-edge-${edgeId}`}
+                d={geometry.path}
+                fill="none"
+                stroke="#4ade80"
+                strokeWidth={5}
+                strokeLinecap="round"
+                className="cycle-flash"
+              />
+            )
+          })}
+
+          {currentCinemaStep?.treeEdges.map((edgeId) => {
+            const geometry = edgeGeometryById.get(edgeId)
+            if (!geometry) {
+              return null
+            }
+            return (
+              <path
+                key={`cinema-tree-edge-${edgeId}`}
+                d={geometry.path}
+                fill="none"
+                stroke="#22c55e"
+                strokeWidth={4}
+                strokeLinecap="round"
+                opacity={0.7}
+              />
+            )
+          })}
+
+          {currentCinemaStep?.mstEdges?.map((edgeId) => {
+            const geometry = edgeGeometryById.get(edgeId)
+            if (!geometry) {
+              return null
+            }
+            const isNew = currentCinemaStep.mstNewEdgeId === edgeId
+            return (
+              <path
+                key={`cinema-mst-edge-${edgeId}-${cinemaStepIndex}`}
+                d={geometry.path}
+                fill="none"
+                stroke="#38bdf8"
+                strokeWidth={5}
+                strokeLinecap="round"
+                className={isNew ? 'mst-grow' : undefined}
+                opacity={0.85}
+              />
+            )
+          })}
+
+          {typeof currentCinemaStep?.rejectedEdgeId === 'string' && (() => {
+            const geometry = edgeGeometryById.get(currentCinemaStep.rejectedEdgeId)
+            if (!geometry) {
+              return null
+            }
+            return (
+              <path
+                key={`cinema-rejected-edge-${currentCinemaStep.rejectedEdgeId}-${cinemaStepIndex}`}
+                d={geometry.path}
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth={5}
+                strokeLinecap="round"
+                className="rejected-flash"
+              />
+            )
+          })()}
+
+          {typeof currentCinemaStep?.currentEdgeId === 'string' && (() => {
+            const geometry = edgeGeometryById.get(currentCinemaStep.currentEdgeId)
+            if (!geometry) {
+              return null
+            }
+            return (
+              <path
+                key={`cinema-current-edge-${currentCinemaStep.currentEdgeId}-${cinemaStepIndex}`}
+                d={geometry.path}
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth={4}
+                strokeLinecap="round"
+                className="cinema-edge-flash"
+              />
+            )
+          })()}
+
+          {graph.edges.map((edge) => {
+            const geometry = edgeGeometryById.get(edge.id)
+            if (!geometry) {
+              return null
+            }
+            const flow = currentCinemaStep?.flowByEdge?.[edge.id]
+            if (typeof flow !== 'number' || flow <= 0) {
+              return null
+            }
+            const capacity = Math.max(1, edge.weight)
+            const ratio = Math.max(0.05, Math.min(1, flow / capacity))
+            const isSaturated = currentCinemaStep?.saturatedEdgeIds?.includes(edge.id) ?? false
+
+            return (
+              <path
+                key={`flow-${edge.id}-${cinemaStepIndex}`}
+                d={geometry.path}
+                fill="none"
+                stroke={isSaturated ? '#ef4444' : '#60a5fa'}
+                strokeWidth={Math.max(2, 8 * ratio)}
+                strokeLinecap="round"
+                opacity={0.75}
+                className={isSaturated ? 'flow-saturated' : undefined}
+              />
+            )
+          })}
+
+          {currentCinemaStep?.augmentingEdgeIds?.map((edgeId) => {
+            const geometry = edgeGeometryById.get(edgeId)
+            if (!geometry) {
+              return null
+            }
+            return (
+              <path
+                key={`augmenting-${edgeId}-${cinemaStepIndex}`}
+                d={geometry.path}
+                fill="none"
+                stroke="#f8fafc"
+                strokeWidth={3}
+                strokeLinecap="round"
+                strokeDasharray="10 6"
+                className="augmenting-pulse"
+              />
+            )
+          })}
+
           {edgeDraftPosition !== null && cursorPosition !== null && (
             <line
               x1={edgeDraftPosition.x}
@@ -613,6 +1224,27 @@ export function GraphCanvas() {
             />
           )}
 
+          {historyDiff.removedNodes.map((nodeId) => {
+            const previous = history.past[history.past.length - 1]
+            const position = previous?.graph.positions[nodeId]
+            if (!position) {
+              return null
+            }
+            return (
+              <circle
+                key={`removed-node-${nodeId}`}
+                cx={position.x}
+                cy={position.y}
+                r={NODE_RADIUS + 3}
+                fill="none"
+                stroke="#f87171"
+                strokeWidth={3}
+                strokeDasharray="5 4"
+                opacity={0.5}
+              />
+            )
+          })}
+
           {graph.nodes.map((nodeId) => {
             const position = graph.positions[nodeId]
             if (!position) {
@@ -621,6 +1253,30 @@ export function GraphCanvas() {
 
             const isSelected = interaction.selectedNodeId === nodeId
             const isDraftStart = interaction.edgeDraftFrom === nodeId
+            const isQueryNode = queryHighlights?.nodes.includes(nodeId) ?? false
+            const isAddedNode = historyDiff.addedNodes.includes(nodeId)
+            const isCinemaVisited = currentCinemaStep?.visited.includes(nodeId) ?? false
+            const isCinemaFrontier = currentCinemaStep?.frontier.includes(nodeId) ?? false
+            const isCinemaCurrent = currentCinemaStep?.currentNode === nodeId
+            const isDijkstra = cinemaProgram?.algorithm === 'Dijkstra'
+            const distance = currentCinemaStep?.distances?.[nodeId]
+            const finiteDistances = currentCinemaStep?.distances
+              ? Object.values(currentCinemaStep.distances)
+              : []
+            const maxDistance =
+              finiteDistances.length > 0
+                ? Math.max(...finiteDistances)
+                : 1
+            const haloRadius =
+              typeof distance === 'number'
+                ? NODE_RADIUS + 8 + Math.min(72, (distance / Math.max(maxDistance, 1)) * 72)
+                : NODE_RADIUS + 8
+            const haloHue =
+              typeof distance === 'number'
+                ? Math.round(250 - Math.min(1, distance / Math.max(maxDistance, 1)) * 180)
+                : 240
+            const shouldShowHalo =
+              isDijkstra && typeof distance === 'number' && !(currentCinemaStep?.visited.includes(nodeId) ?? false)
 
             return (
               <g
@@ -669,6 +1325,62 @@ export function GraphCanvas() {
                     })
                   }}
                 />
+                {isAddedNode && (
+                  <circle
+                    r={NODE_RADIUS + 7}
+                    fill="none"
+                    stroke="#4ade80"
+                    strokeWidth={2.5}
+                    opacity={0.65}
+                    className="history-added-node"
+                  />
+                )}
+                {shouldShowHalo && (
+                  <circle
+                    r={haloRadius}
+                    fill="none"
+                    stroke={`hsl(${haloHue} 90% 70%)`}
+                    strokeWidth={2}
+                    opacity={0.42}
+                    className="dijkstra-halo"
+                  />
+                )}
+                {isQueryNode && (
+                  <circle
+                    r={NODE_RADIUS + 10}
+                    fill="none"
+                    stroke={queryHighlights?.color ?? '#4ade80'}
+                    strokeWidth={2.5}
+                    className="query-highlight-pulse"
+                  />
+                )}
+                {isCinemaVisited && (
+                  <circle
+                    r={NODE_RADIUS + 5}
+                    fill="none"
+                    stroke="#22c55e"
+                    strokeWidth={2.5}
+                    opacity={0.75}
+                  />
+                )}
+                {isCinemaFrontier && (
+                  <circle
+                    r={NODE_RADIUS + 9}
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    className="frontier-pulse"
+                  />
+                )}
+                {isCinemaCurrent && (
+                  <circle
+                    r={NODE_RADIUS + 12}
+                    fill="none"
+                    stroke="#f8fafc"
+                    strokeWidth={2}
+                    className="cinema-current-node"
+                  />
+                )}
                 <text
                   className="pointer-events-none fill-slate-200 text-[13px] font-bold"
                   textAnchor="middle"
@@ -689,6 +1401,15 @@ export function GraphCanvas() {
               onComplete={() => setBursts(prev => prev.filter(p => p.id !== b.id))}
             />
           ))}
+
+          {typeof currentCinemaStep?.mstWeight === 'number' && (
+            <g transform="translate(18 34)">
+              <rect width="150" height="30" rx="8" fill="rgba(15,23,42,0.85)" stroke="rgba(56,189,248,0.65)" />
+              <text x="10" y="20" className="fill-sky-300 text-[12px] font-semibold">
+                MST Weight: {currentCinemaStep.mstWeight}
+              </text>
+            </g>
+          )}
           </g>
         </svg>
         <GraphMetrics nodes={graph.nodes} edges={graph.edges} directed={graph.directed} />

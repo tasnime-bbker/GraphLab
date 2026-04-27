@@ -25,6 +25,7 @@ export type GraphAction =
   | { type: 'RESET' }
   | { type: 'UNDO' }
   | { type: 'REDO' }
+  | { type: 'JUMP_TO'; payload: { index: number } }
   | { type: 'SET_DEV_MODE'; payload: { isDevMode: boolean } }
 
 function edgeExists(

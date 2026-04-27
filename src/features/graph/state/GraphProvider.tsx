@@ -3,7 +3,11 @@ import {
   useReducer,
 } from 'react'
 import { initialDocument } from '../model/defaults'
-import { GraphDispatchContext, GraphStateContext } from './GraphContext'
+import {
+  GraphDispatchContext,
+  GraphHistoryContext,
+  GraphStateContext,
+} from './GraphContext'
 import { historyReducer } from './historyReducer'
 
 export function GraphProvider({ children }: PropsWithChildren) {
@@ -14,11 +18,13 @@ export function GraphProvider({ children }: PropsWithChildren) {
   })
 
   return (
-    <GraphStateContext.Provider value={state.present}>
-      <GraphDispatchContext.Provider value={dispatch}>
-        {children}
-      </GraphDispatchContext.Provider>
-    </GraphStateContext.Provider>
+    <GraphHistoryContext.Provider value={state}>
+      <GraphStateContext.Provider value={state.present}>
+        <GraphDispatchContext.Provider value={dispatch}>
+          {children}
+        </GraphDispatchContext.Provider>
+      </GraphStateContext.Provider>
+    </GraphHistoryContext.Provider>
   )
 }
 

@@ -9,6 +9,9 @@ React + TypeScript + D3 frontend for creating graph inputs consumed by the backe
   - Visual editor (SVG canvas): add node, drag node, draft/create edge, delete node/edge.
   - Matrix input (adjacency): resize node count, edit matrix, apply to graph.
 - `GraphUI` JSON contract preview is rendered live.
+- Time-travel history now includes timeline scrubbing (`UNDO` / `REDO` / `JUMP_TO`) and visual diff ghosts.
+- Visual editor includes Algorithm Cinema controls (BFS/DFS/Dijkstra/Prim/Kruskal/MaxFlow) with step playback.
+- Query mini-language is available in-canvas: `path`, `neighbors`, `degree`, `components`.
 
 ## Project Scripts
 
@@ -24,8 +27,15 @@ npm run lint
 - `src/features/graph/model`: domain types and backend contract shape.
 - `src/features/graph/state`: reducer, actions, context provider.
 - `src/features/graph-editor/components`: D3-powered SVG interactions.
+- `src/features/graph-editor/utils/algorithmCinema.ts`: frontend algorithm snapshot generators.
 - `src/features/matrix/components`: adjacency matrix editor.
 - `src/features/workspace/components`: toolbar, mode switching, contract panel.
+
+## New Interaction Controls
+
+- **History timeline:** use the scrubber below mode switch to jump any recorded mutation.
+- **Algorithm Cinema:** build steps, then play/pause/step/rewind and scrub in the canvas panel.
+- **Query mini-language:** run commands like `path 1 5`, `neighbors 3`, `degree 4`, `components`.
 
 ## GraphUI Contract
 

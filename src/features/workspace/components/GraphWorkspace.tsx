@@ -2,6 +2,7 @@ import { GraphCanvas } from '../../graph-editor/components/GraphCanvas'
 import { useGraphState } from '../../graph/state/useGraphStore'
 import { MatrixEditor } from '../../matrix/components/MatrixEditor'
 import { GraphContractPanel } from './GraphContractPanel'
+import { GraphHistoryTimeline } from './GraphHistoryTimeline'
 import { GraphToolbar } from './GraphToolbar'
 import { ModeSwitch } from './ModeSwitch'
 
@@ -35,6 +36,8 @@ export function GraphWorkspace() {
         <div className="flex justify-center md:justify-start">
           <ModeSwitch />
         </div>
+
+        <GraphHistoryTimeline />
 
         <div className={`grid grid-cols-1 gap-6 transition-all duration-500 ${isDevMode ? 'xl:grid-cols-[1fr_400px]' : 'xl:grid-cols-1'}`}>
           <div className="glass-panel p-1 flex flex-col min-h-[600px] transition-all duration-500 overflow-hidden">
