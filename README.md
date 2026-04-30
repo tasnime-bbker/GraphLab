@@ -1,6 +1,6 @@
 # Graph Lab Frontend
 
-React + TypeScript + D3 frontend for creating graph inputs consumed by the backend Graph Builder and algorithm layer.
+React + TypeScript + D3 frontend for creating graph inputs consumed by the backend Graph Builder and algorithm layer...
 
 ## Current Implementation Status
 
