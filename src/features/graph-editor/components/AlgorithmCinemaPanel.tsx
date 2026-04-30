@@ -70,6 +70,10 @@ export function AlgorithmCinemaPanel({
             <option value="ConnectedComponents">Composantes Connexes</option>
             <option value="SpanningForest">Forêt Couvrante</option>
             <option value="StronglyConnectedComponents">Composantes Fortement Connexes</option>
+            <option value="Bellman">Bellman</option>
+            <option value="BellmanFord">Bellman-Ford</option>
+            <option value="WelshPowell">Welsh-Powell</option>
+            <option value="EulerienPath">Chemins / circuits eulériens</option>
           </select>
         </label>
 
