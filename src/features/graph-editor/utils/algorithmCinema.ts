@@ -1,4 +1,6 @@
 import type { GraphEdge, GraphState, NodeId } from '../../graph/model/types'
+import { findEulerianPathOrCircuit } from '../../graph/utils/graphAnalysis'
+
 
 export type CinemaAlgorithm = 'BFS' | 'DFS' | 'Dijkstra' | 'Prims' | 'Kruskals' | 'MaxFlow' | 'ConnectedComponents' | 'SpanningForest' | 'StronglyConnectedComponents' | 'Bellman' | 'BellmanFord' | 'WelshPowell' | 'EulerienPath'
 
@@ -993,6 +995,72 @@ function buildStronglyConnectedComponentsProgram(graph: GraphState): CinemaStep[
   return steps
 }
  
+function buildEulerianPathProgram(graph: GraphState): CinemaStep[] {
+  const steps: CinemaStep[] = []
+  
+  const path = findEulerianPathOrCircuit(graph.nodes, graph.edges)
+  
+  if (!path || path.length === 0) {
+    steps.push({
+      narration: "Ce graphe ne possède ni chemin ni circuit eulérien. (Vérifiez la connexité et la parité des degrés).",
+      visited: [],
+      frontier: [],
+      treeEdges: [],
+    })
+    return steps
+  }
+
+  const visitedNodes: NodeId[] = [path[0]]
+  const visitedEdgeIds: string[] = []
+  const usedEdgeIds = new Set<string>()
+
+  steps.push({
+    narration: `Début du parcours eulérien depuis le nœud ${path[0]}.`,
+    visited: [path[0]],
+    frontier: [],
+    treeEdges: [],
+    currentNode: path[0],
+  })
+
+  for (let i = 0; i < path.length - 1; i++) {
+    const from = path[i]
+    const to = path[i + 1]
+
+    const edge = graph.edges.find(e => {
+      if (usedEdgeIds.has(e.id)) return false
+      if (graph.directed) {
+        return e.from === from && e.to === to
+      } else {
+        return (e.from === from && e.to === to) || (e.from === to && e.to === from)
+      }
+    })
+
+    if (edge) {
+      usedEdgeIds.add(edge.id)
+      visitedEdgeIds.push(edge.id)
+      if (!visitedNodes.includes(to)) visitedNodes.push(to)
+
+      steps.push({
+        narration: `Traversée de l'arête ${from} → ${to}.`,
+        visited: [...visitedNodes],
+        frontier: [],
+        treeEdges: [...visitedEdgeIds],
+        currentNode: to,
+        currentEdgeId: edge.id,
+      })
+    }
+  }
+
+  steps.push({
+    narration: `Parcours eulérien terminé ! Total : ${visitedEdgeIds.length} arêtes parcourues.`,
+    visited: [...visitedNodes],
+    frontier: [],
+    treeEdges: [...visitedEdgeIds],
+  })
+
+  return steps
+}
+
 export function buildCinemaProgram(
   graph: GraphState,
   algorithm: CinemaAlgorithm,
@@ -1018,7 +1086,9 @@ export function buildCinemaProgram(
       case 'SpanningForest':
         return buildSpanningForestProgram(graph)
       case 'StronglyConnectedComponents':
-  return buildStronglyConnectedComponentsProgram(graph)
+        return buildStronglyConnectedComponentsProgram(graph)
+      case 'EulerienPath':
+        return buildEulerianPathProgram(graph)
       default:
         return []
     }

@@ -1,5 +1,5 @@
-import { NodeId, GraphEdge } from '../model/types';
-import {
+import type { NodeId, GraphEdge } from '../model/types';
+import type {
   AlgorithmCinemaPayload,
   CinemaNodeState,
   CinemaEdgeState,

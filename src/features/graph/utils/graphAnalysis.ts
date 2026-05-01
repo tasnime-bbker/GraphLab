@@ -1,4 +1,4 @@
-import { NodeId, GraphEdge } from '../model/types';
+import type { NodeId, GraphEdge } from '../model/types';
 
 /**
  * Construit une liste d'adjacence à partir des noeuds et des arêtes.
