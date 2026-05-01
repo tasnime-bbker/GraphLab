@@ -1561,6 +1561,11 @@ export function GraphCanvas() {
             const shouldShowHalo =
               isDijkstra && typeof distance === 'number' && !(currentCinemaStep?.visited.includes(nodeId) ?? false)
 
+            // Welsh-Powell : couleur distincte par groupe de coloration
+            const cinemaColorGroup = currentCinemaStep?.colorGroups?.find(g =>
+              g.nodeIds.includes(nodeId)
+            ) ?? null
+
             return (
               <g
                 key={nodeId}
@@ -1634,14 +1639,25 @@ export function GraphCanvas() {
                     className="query-highlight-pulse"
                   />
                 )}
-                {isCinemaVisited && (
+                {/* Anneau coloré Welsh-Powell : affiché à la place du vert générique si le nœud a une couleur */}
+                {cinemaColorGroup !== null ? (
                   <circle
                     r={NODE_RADIUS + 5}
-                    fill="none"
-                    stroke="#22c55e"
+                    fill={cinemaColorGroup.color + '22'}
+                    stroke={cinemaColorGroup.color}
                     strokeWidth={2.5}
-                    opacity={0.75}
+                    opacity={0.9}
                   />
+                ) : (
+                  isCinemaVisited && (
+                    <circle
+                      r={NODE_RADIUS + 5}
+                      fill="none"
+                      stroke="#22c55e"
+                      strokeWidth={2.5}
+                      opacity={0.75}
+                    />
+                  )
                 )}
                 {isCinemaFrontier && (
                   <circle
