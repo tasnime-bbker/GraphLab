@@ -15,6 +15,7 @@ import {
   findComponents,
   neighborsOfNode,
   shortestPathBetweenNodes,
+  getVisualEdges,
 } from '../../graph/state/selectors'
 import { useGraphDispatch, useGraphHistory, useGraphState } from '../../graph/state/useGraphStore'
 import { EdgeFlowParticles } from './EdgeFlowParticles'
@@ -287,6 +288,11 @@ export function GraphCanvas() {
   const [cinemaPlaying, setCinemaPlaying] = useState(false)
   const [cinemaSpeed, setCinemaSpeed] = useState(1)
   const [autoLayoutRunning, setAutoLayoutRunning] = useState(false)
+  const [edgeDraftDirected, setEdgeDraftDirected] = useState(graph.directed)
+
+  useEffect(() => {
+    setEdgeDraftDirected(graph.directed)
+  }, [graph.directed])
 
   const cycleFlashTimeoutRef = useRef<number | null>(null)
   const queryTimeoutRef = useRef<number | null>(null)
@@ -808,16 +814,18 @@ export function GraphCanvas() {
       ? cinemaProgram.steps[Math.max(0, Math.min(cinemaStepIndex, cinemaProgram.steps.length - 1))]
       : null
 
+  const visualEdges = useMemo(() => getVisualEdges(graph.edges), [graph.edges])
+
   const edgeGeometryById = useMemo(() => {
     const map = new Map<string, EdgeGeometry>()
-    const bundlesEnabled = graph.edges.length > 15
+    const bundlesEnabled = visualEdges.length > 15
 
     type BundleGroup = { angle: number; centerX: number; centerY: number; edgeIds: string[] }
     const groups: BundleGroup[] = []
     const bundleByEdgeId = new Map<string, { x: number; y: number; spread: number }>()
 
     if (bundlesEnabled) {
-      for (const edge of graph.edges) {
+      for (const edge of visualEdges) {
         const from = graph.positions[edge.from]
         const to = graph.positions[edge.to]
         if (!from || !to) {
@@ -865,20 +873,25 @@ export function GraphCanvas() {
       }
     }
 
-    for (const edge of graph.edges) {
+    for (const edge of visualEdges) {
       const from = graph.positions[edge.from]
       const to = graph.positions[edge.to]
       if (!from || !to) {
         continue
       }
       const pairKey = edge.from < edge.to ? `${edge.from}-${edge.to}` : `${edge.to}-${edge.from}`
-      const hasReverse = graph.directed && reverseEdgePairs.has(pairKey)
+      const hasReverse = edge.hasArrow && reverseEdgePairs.has(pairKey)
       const signedOffset =
         hasReverse && edge.from !== edge.to ? (edge.from < edge.to ? 16 : -16) : 0
-      map.set(
-        edge.id,
-        buildEdgeGeometry(from, to, signedOffset, graph.directed, bundleByEdgeId.get(edge.id)),
-      )
+      const geometry = buildEdgeGeometry(from, to, signedOffset, edge.hasArrow, bundleByEdgeId.get(edge.id))
+      map.set(edge.id, geometry)
+      
+      if (edge.symmetryKey) {
+        const reverseEdge = graph.edges.find(e => e.symmetryKey === edge.symmetryKey && e.id !== edge.id)
+        if (reverseEdge) {
+          map.set(reverseEdge.id, geometry)
+        }
+      }
     }
 
     const geometryList = [...map.entries()]
@@ -971,13 +984,32 @@ export function GraphCanvas() {
               {autoLayoutRunning ? 'Auto Layout Running...' : 'Auto Layout'}
             </button>
             {interaction.edgeDraftFrom !== null && (
-              <button
-                type="button"
-                className="rounded-full border border-amber-500/50 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.2)]"
-                onClick={() => dispatch({ type: 'CLEAR_EDGE_DRAFT' })}
-              >
-                Cancel Draft (Esc)
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-slate-800 rounded px-2 py-1 border border-slate-700 shadow-[0_0_10px_rgba(0,0,0,0.5)]">
+                  <span className="text-xs text-slate-300 font-semibold mr-1">Edge:</span>
+                  <button
+                    type="button"
+                    onClick={() => setEdgeDraftDirected(true)}
+                    className={`px-2 py-0.5 text-xs rounded transition-colors ${edgeDraftDirected ? 'bg-indigo-500 text-white font-semibold' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Directed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEdgeDraftDirected(false)}
+                    className={`px-2 py-0.5 text-xs rounded transition-colors ${!edgeDraftDirected ? 'bg-indigo-500 text-white font-semibold' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Undirected
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-full border border-amber-500/50 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                  onClick={() => dispatch({ type: 'CLEAR_EDGE_DRAFT' })}
+                >
+                  Cancel Draft (Esc)
+                </button>
+              </div>
             )}
           </div>
           <div className="flex flex-col gap-1 text-xs text-slate-400">
@@ -1237,13 +1269,13 @@ export function GraphCanvas() {
               )
             })}
 
-          {graph.edges.map((edge) => {
+          {visualEdges.map((edge) => {
             const geometry = edgeGeometryById.get(edge.id)
             if (!geometry) {
               return null
             }
 
-            const isSelected = interaction.selectedEdgeId === edge.id
+            const isSelected = interaction.selectedEdgeId === edge.id || (edge.symmetryKey !== undefined && graph.edges.find(e => e.id === interaction.selectedEdgeId)?.symmetryKey === edge.symmetryKey)
 
             return (
               <EdgeItem
@@ -1251,7 +1283,7 @@ export function GraphCanvas() {
                 edge={edge}
                 geometry={geometry}
                 isSelected={isSelected}
-                directed={graph.directed}
+                directed={edge.hasArrow}
                 weighted={graph.weighted}
                 editingEdgeId={editingEdgeId}
                 weightDraft={weightDraft}
@@ -1595,6 +1627,7 @@ export function GraphCanvas() {
                       payload: {
                         from: interaction.edgeDraftFrom,
                         to: nodeId,
+                        directed: edgeDraftDirected,
                       },
                     })
                   }}

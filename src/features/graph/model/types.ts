@@ -10,6 +10,8 @@ export interface GraphEdge {
   from: NodeId
   to: NodeId
   weight: number
+  directed?: boolean
+  symmetryKey?: string
 }
 
 // Backend-facing contract.
