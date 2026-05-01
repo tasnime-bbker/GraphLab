@@ -53,7 +53,10 @@ export type AlgorithmType =
   | 'Kruskals' 
   | 'MaxFlow' 
   | 'TopologicalSort' 
-  | 'BellmanFord';
+  | 'BellmanFord'
+  | 'ConnectedComponents'
+  | 'SpanningForest'
+  | 'EulerienPath';
 
 export interface BaseAlgorithmStep {
   stepId: number;
@@ -75,6 +78,9 @@ export interface ConnectedComponentsStep extends BaseAlgorithmStep { algorithm: 
  
 /** Tree edges are marked tree_edge; each component's tree gets a convex_hull highlight. */
 export interface SpanningForestStep extends BaseAlgorithmStep { algorithm: 'SpanningForest'; }
+
+export interface EulerienPathStep extends BaseAlgorithmStep { algorithm: 'EulerienPath'; }
+
 export type AlgorithmStep = 
   | BfsStep 
   | DfsStep 
@@ -85,7 +91,8 @@ export type AlgorithmStep =
   | TopoSortStep 
   | BellmanFordStep 
   | ConnectedComponentsStep
-  | SpanningForestStep;
+  | SpanningForestStep
+  | EulerienPathStep;
 
 export interface AlgorithmMetadata {
   algorithm: AlgorithmType;
