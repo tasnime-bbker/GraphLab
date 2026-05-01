@@ -1,5 +1,37 @@
 import type { GraphEdge, GraphState, NodeId } from '../model/types'
 
+export interface VisualEdge extends GraphEdge {
+  visualId: string
+  hasArrow: boolean
+}
+
+export function getVisualEdges(edges: GraphEdge[]): VisualEdge[] {
+  const visualEdges: VisualEdge[] = []
+  const seenSymmetryKeys = new Set<string>()
+
+  for (const edge of edges) {
+    if (edge.symmetryKey) {
+      if (seenSymmetryKeys.has(edge.symmetryKey)) {
+        continue
+      }
+      seenSymmetryKeys.add(edge.symmetryKey)
+      visualEdges.push({
+        ...edge,
+        visualId: edge.symmetryKey,
+        hasArrow: false,
+      })
+    } else {
+      visualEdges.push({
+        ...edge,
+        visualId: edge.id,
+        hasArrow: edge.directed !== false, // Default to true if not specified
+      })
+    }
+  }
+
+  return visualEdges
+}
+
 export function sortedNodes(nodes: NodeId[]): NodeId[] {
   return [...nodes].sort((left, right) => left - right)
 }
