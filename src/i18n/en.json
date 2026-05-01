@@ -1,0 +1,126 @@
+{
+  "app": {
+    "title": "Graph Lab",
+    "subtitle": "Build and visualize graphs intuitively, export instantly."
+  },
+  "canvas": {
+    "title": "Visual Editor",
+    "helpHint": "Hover for help",
+    "autoLayoutRunning": "Auto Layout Running...",
+    "leftClick": "Left click (or N): add node",
+    "delete": "Right click node / double click edge: delete",
+    "shortcuts": "D toggle directed, W toggle weighted, Ctrl+Z/Y undo/redo",
+    "autoLayout": "Auto Layout",
+    "directed": "Directed",
+    "undirected": "Undirected",
+    "cancelDraft": "Cancel Draft (Esc)",
+    "edge": "Edge"
+  },
+  "mode": {
+    "label": "Graph input mode",
+    "visual": "Visual Editor",
+    "matrix": "Matrix Input"
+  },
+  "params": {
+    "title": "Parameters",
+    "directed": "Directed",
+    "weighted": "Weighted",
+    "devMode": "Dev Mode",
+    "weightPolicy": "Weight Policy",
+    "darkMode": "Dark mode",
+    "language": "Language",
+    "autoLayout": "Auto Layout",
+    "nodes": "Nodes",
+    "edges": "Edges"
+  },
+  "policy": {
+    "positive": "Positive (> 0)",
+    "nonNegative": "Non-negative (>= 0)",
+    "any": "Any number"
+  },
+  "toolbar": {
+    "title": "Export",
+    "format": "Format",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "copyFailed": "Copy failed",
+    "png": "PNG",
+    "clear": "Clear"
+  },
+  "contract": {
+    "title": "GraphUI Output",
+    "subtitle": "Live JSON payload representation"
+  },
+  "history": {
+    "title": "History Timeline",
+    "step": "Step",
+    "undo": "Undo",
+    "redo": "Redo",
+    "jump": "Jump to step"
+  },
+  "metrics": {
+    "title": "Graph Metrics",
+    "type": "Graph Type",
+    "nodes": "Nodes",
+    "edges": "Edges",
+    "density": "Density",
+    "directed": "Directed",
+    "undirected": "Undirected",
+    "complete": "Complete",
+    "regular": "Regular",
+    "bipartite": "Bipartite",
+    "planar": "Planar",
+    "empty": "Empty graph"
+  },
+  "matrix": {
+    "title": "Adjacency Matrix",
+    "subtitle": "Edit connections.",
+    "nodes": "Nodes",
+    "apply": "Apply Changes"
+  },
+  "query": {
+    "placeholder": "Query: path 1 5 | neighbors 3 | degree 4 | components",
+    "run": "Run Query",
+    "clear": "Clear"
+  },
+  "cinema": {
+    "algorithm": "Algorithm",
+    "source": "Source",
+    "target": "Target",
+    "speed": "Speed",
+    "build": "Build Steps",
+    "play": "Play",
+    "pause": "Pause",
+    "step": "Step",
+    "narration": "Build steps to start playback.",
+    "maxFlow": "Max Flow",
+    "components": "Connected Components",
+    "forest": "Spanning Forest",
+    "strongComponents": "Strongly Connected Components",
+    "bellman": "Bellman",
+    "bellmanFord": "Bellman-Ford",
+    "welshPowell": "Welsh-Powell",
+    "euler": "Eulerian Paths / Circuits"
+  },
+  "help": {
+    "title": "Quick Guide",
+    "hint": "Hover for help",
+    "summary": "Common shortcuts and quick actions.",
+    "leftClick": "Left click (or N): add node",
+    "delete": "Right click node / double click edge: delete",
+    "shortcuts": "D toggle directed, W toggle weighted, Ctrl+Z/Y undo/redo",
+    "autoLayout": "Run Auto Layout",
+    "openMatrix": "Open Matrix Mode",
+    "openVisual": "Open Visual Mode",
+    "fullGuide": "Read full guide"
+  },
+  "palette": {
+    "placeholder": "Type a command...",
+    "noMatch": "No command matches your query."
+  },
+  "lang": {
+    "en": "English",
+    "fr": "French"
+  }
+}
+

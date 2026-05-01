@@ -25,7 +25,9 @@ import { GraphMetrics } from './GraphMetrics'
 import { SnapGuides } from './SnapGuides'
 import { AlgorithmCinemaPanel } from './AlgorithmCinemaPanel'
 import { calculateSnap } from '../hooks/useMagneticSnap'
+import { CanvasHelp } from '../../workspace/components/CanvasHelp'
 import { useShortcut } from '../../../shared/hooks/useShortcut'
+import { useI18n } from '../../../shared/context/I18nContext'
 import {
   buildCinemaProgram,
   speedToInterval,
@@ -33,7 +35,9 @@ import {
   type CinemaProgram,
   type CinemaStep,
 } from '../utils/algorithmCinema'
+import { ENABLE_CLUSTER_ZONES } from '../config/featureFlags'
 import './GraphCanvas.css'
+import {Button} from "@mantine/core";
 
 const CANVAS_WIDTH = 900
 const CANVAS_HEIGHT = 520
@@ -271,6 +275,7 @@ export function GraphCanvas() {
   const dispatch = useGraphDispatch()
   const history = useGraphHistory()
   const { graph, interaction } = useGraphState()
+  const { t } = useI18n()
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(
     null,
   )
@@ -923,6 +928,10 @@ export function GraphCanvas() {
   }, [graph, history.past])
 
   const clusteringRegions = useMemo(() => {
+    if (!ENABLE_CLUSTER_ZONES) {
+      return []
+    }
+
     const palette = ['#818cf8', '#34d399', '#fbbf24', '#fb7185', '#22d3ee']
     return findComponents(graph).map((component, index) => {
       const points = component
@@ -967,61 +976,66 @@ export function GraphCanvas() {
 
   return (
     <section className="flex flex-col h-full rounded-2xl relative overflow-hidden group">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none"></div>
-      
-      <div className="p-4 md:p-6 border-b border-slate-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/40 z-10 relative">
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(140deg, rgba(99,102,241,0.03) 0%, rgba(168,85,247,0.02) 60%)' }} />
+
+      <div
+        className="p-4 md:p-6 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10 relative"
+        style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface)' }}
+      >
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <h2 className="text-xl font-semibold flex items-center gap-2" style={{ color: 'var(--app-text)' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: 'var(--app-accent)' }}>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
               </svg>
               Visual Editor
             </h2>
-            <button
-              type="button"
-              className="glass-button px-3 py-1 text-xs"
-              onClick={runAutoLayout}
-              disabled={autoLayoutRunning}
-            >
-              {autoLayoutRunning ? 'Auto Layout Running...' : 'Auto Layout'}
-            </button>
-            {interaction.edgeDraftFrom !== null && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 bg-slate-800 rounded px-2 py-1 border border-slate-700 shadow-[0_0_10px_rgba(0,0,0,0.5)]">
-                  <span className="text-xs text-slate-300 font-semibold mr-1">Edge:</span>
-                  <button
-                    type="button"
-                    onClick={() => setEdgeDraftDirected(true)}
-                    className={`px-2 py-0.5 text-xs rounded transition-colors ${edgeDraftDirected ? 'bg-indigo-500 text-white font-semibold' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Directed
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEdgeDraftDirected(false)}
-                    className={`px-2 py-0.5 text-xs rounded transition-colors ${!edgeDraftDirected ? 'bg-indigo-500 text-white font-semibold' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Undirected
-                  </button>
-                </div>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2 self-start">
+          <div style={{ marginRight: 32, display: 'flex', gap: 12 }}>
+            <Button size="xs" variant="light" onClick={() => window.dispatchEvent(new CustomEvent('graph:auto-layout'))} disabled={autoLayoutRunning}>
+              {autoLayoutRunning ? t('canvas.autoLayoutRunning') : t('params.autoLayout')}
+            </Button>
+            <Button size="xs" variant="light" color="red" onClick={() => dispatch({ type: 'RESET' })}>
+              {t('toolbar.clear')}
+            </Button>
+          </div>
+
+          {interaction.edgeDraftFrom !== null && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 rounded px-2 py-1" style={{ backgroundColor: 'var(--app-surface-strong)', border: '1px solid var(--app-border)' }}>
+                <span className="text-xs font-semibold mr-1" style={{ color: 'var(--app-muted)' }}>{t('canvas.edge')}:</span>
                 <button
                   type="button"
-                  className="rounded-full border border-amber-500/50 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.2)]"
-                  onClick={() => dispatch({ type: 'CLEAR_EDGE_DRAFT' })}
+                  onClick={() => setEdgeDraftDirected(true)}
+                  className="px-2 py-0.5 text-xs rounded transition-colors font-semibold"
+                  style={{ backgroundColor: edgeDraftDirected ? 'var(--app-accent)' : 'transparent', color: edgeDraftDirected ? 'var(--app-surface-strong)' : 'var(--app-text)' }}
                 >
-                  Cancel Draft (Esc)
+                  {t('canvas.directed')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEdgeDraftDirected(false)}
+                  className="px-2 py-0.5 text-xs rounded transition-colors font-semibold"
+                  style={{ backgroundColor: !edgeDraftDirected ? 'var(--app-accent)' : 'transparent', color: !edgeDraftDirected ? 'var(--app-surface-strong)' : 'var(--app-text)' }}
+                >
+                  {t('canvas.undirected')}
                 </button>
               </div>
-            )}
-          </div>
-          <div className="flex flex-col gap-1 text-xs text-slate-400">
-            <p className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Left click (or 'N') to add node. Pan/Zoom with mouse.</p>
-            <p className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Right click (node) or Double click (edge) to remove. (Or Delete/Backspace)</p>
-            <p className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 'D' toggle Directed. 'W' toggle Weighted. Ctrl+Z/Y for Undo/Redo.</p>
-            {graph.weighted && (
-              <p className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Click edge weight to edit. {weightPolicyHint(graph.weightPolicy)}</p>
-            )}
+              <button
+                type="button"
+                className="rounded-full px-3 py-1 text-xs font-semibold transition-colors"
+                style={{ border: '1px solid var(--app-border)', backgroundColor: 'rgba(99,102,241,0.06)', color: 'var(--app-accent)' }}
+                onClick={() => dispatch({ type: 'CLEAR_EDGE_DRAFT' })}
+              >
+                {t('canvas.cancelDraft')}
+              </button>
+            </div>
+          )}
+          <div className="absolute right-3 top-3 z-20">
+            <CanvasHelp />
           </div>
         </div>
 
@@ -1035,7 +1049,7 @@ export function GraphCanvas() {
         )}
       </div>
 
-      <div className="border-b border-slate-700/40 bg-slate-900/35 p-3 md:p-4 space-y-3">
+      <div className="border-b p-3 md:p-4 space-y-3" style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface)' }}>
         <form
           className="flex items-center gap-2"
           onSubmit={(event) => {
@@ -1046,11 +1060,11 @@ export function GraphCanvas() {
           <input
             value={queryInput}
             onChange={(event) => setQueryInput(event.currentTarget.value)}
-            placeholder="Query: path 1 5 | neighbors 3 | degree 4 | components"
+            placeholder={t('query.placeholder')}
             className="glass-input flex-1 px-3 py-1.5 text-xs"
           />
           <button type="submit" className="glass-button px-3 py-1 text-xs">
-            Run Query
+            {t('query.run')}
           </button>
           <button
             type="button"
@@ -1060,7 +1074,7 @@ export function GraphCanvas() {
               setQueryHighlights(null)
             }}
           >
-            Clear
+            {t('query.clear')}
           </button>
         </form>
 
@@ -1106,7 +1120,7 @@ export function GraphCanvas() {
         )}
       </div>
 
-      <div className="flex-grow relative bg-slate-950/50 overflow-hidden">
+      <div className="flex-grow relative overflow-hidden" style={{ backgroundColor: 'var(--app-surface-strong)' }}>
         <svg
           ref={svgRef}
           data-graph-canvas="main"
@@ -1128,7 +1142,7 @@ export function GraphCanvas() {
         >
           <defs>
             <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <circle cx="2" cy="2" r="1" fill="rgba(99, 102, 241, 0.15)" />
+              <circle cx="2" cy="2" r="1" fill="var(--app-accent)" opacity="0.15" />
             </pattern>
             <marker
               id="arrow"
@@ -1138,7 +1152,7 @@ export function GraphCanvas() {
               refY="6"
               orient="auto"
             >
-              <path d="M0,2 L10,6 L0,10 L3,6 z" fill="#818cf8" />
+              <path d="M0,2 L10,6 L0,10 L3,6 z" fill="var(--app-accent)" />
             </marker>
             <marker
               id="arrow-selected"
@@ -1148,7 +1162,7 @@ export function GraphCanvas() {
               refY="6"
               orient="auto"
             >
-              <path d="M0,2 L10,6 L0,10 L3,6 z" fill="#c084fc" />
+              <path d="M0,2 L10,6 L0,10 L3,6 z" fill="var(--app-accent)" />
             </marker>
             
           </defs>
@@ -1192,7 +1206,7 @@ export function GraphCanvas() {
             
             <SnapGuides x={guides.x} y={guides.y} bounds={{ w: 10000, h: 10000 }} />
 
-            {clusteringRegions.map((region) => {
+            {ENABLE_CLUSTER_ZONES && clusteringRegions.map((region) => {
               if (!region) {
                 return null
               }
@@ -1693,7 +1707,7 @@ export function GraphCanvas() {
           </g>
         </svg>
 
-        <div className="absolute bottom-4 right-4 rounded-lg border border-slate-600/60 bg-slate-900/80 p-1.5 shadow-lg">
+        <div className="absolute bottom-4 right-4 rounded-lg border p-1.5 shadow-lg" style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface-strong)' }}>
           <svg
             width={MINIMAP_WIDTH}
             height={MINIMAP_HEIGHT}
@@ -1701,7 +1715,7 @@ export function GraphCanvas() {
             className="cursor-pointer"
             onClick={navigateFromMinimap}
           >
-            <rect x={0} y={0} width={MINIMAP_WIDTH} height={MINIMAP_HEIGHT} fill="#020617" />
+            <rect x={0} y={0} width={MINIMAP_WIDTH} height={MINIMAP_HEIGHT} fill="var(--app-surface-strong)" />
             {graph.edges.map((edge) => {
               const from = graph.positions[edge.from]
               const to = graph.positions[edge.to]
@@ -1715,7 +1729,7 @@ export function GraphCanvas() {
                   y1={from.y * minimapScaleY}
                   x2={to.x * minimapScaleX}
                   y2={to.y * minimapScaleY}
-                  stroke="rgba(129,140,248,0.45)"
+                   stroke="var(--app-accent)"
                   strokeWidth={1}
                 />
               )

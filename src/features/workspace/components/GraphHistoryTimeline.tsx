@@ -1,9 +1,11 @@
 import { useMemo } from 'react'
 import { useGraphDispatch, useGraphHistory } from '../../graph/state/useGraphStore'
+import { useI18n } from '../../../shared/context/I18nContext'
 
 export function GraphHistoryTimeline() {
   const dispatch = useGraphDispatch()
   const { past, future } = useGraphHistory()
+  const { t } = useI18n()
 
   const total = past.length + 1 + future.length
   const currentIndex = past.length
@@ -19,9 +21,9 @@ export function GraphHistoryTimeline() {
   return (
     <div className="glass-panel p-3 md:p-4">
       <div className="flex items-center justify-between gap-3 text-xs text-slate-300">
-        <span className="uppercase tracking-wider text-slate-400">History Timeline</span>
+        <span className="uppercase tracking-wider text-slate-400">{t('history.title')}</span>
         <span>
-          Step {currentIndex + 1}/{total}
+          {t('history.step')} {currentIndex + 1}/{total}
         </span>
       </div>
 
@@ -31,18 +33,18 @@ export function GraphHistoryTimeline() {
           className="glass-button px-2 py-1 text-xs"
           onClick={() => dispatch({ type: 'UNDO' })}
           disabled={past.length === 0}
-          title="Undo"
+          title={t('history.undo')}
         >
-          Undo
+          {t('history.undo')}
         </button>
         <button
           type="button"
           className="glass-button px-2 py-1 text-xs"
           onClick={() => dispatch({ type: 'REDO' })}
           disabled={future.length === 0}
-          title="Redo"
+          title={t('history.redo')}
         >
-          Redo
+          {t('history.redo')}
         </button>
 
         <input
@@ -69,7 +71,7 @@ export function GraphHistoryTimeline() {
               index === currentIndex ? 'bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.85)]' : 'bg-slate-600 hover:bg-slate-500'
             }`}
             onClick={() => dispatch({ type: 'JUMP_TO', payload: { index } })}
-            title={`Jump to step ${index + 1}`}
+            title={`${t('history.jump')} ${index + 1}`}
           />
         ))}
       </div>
