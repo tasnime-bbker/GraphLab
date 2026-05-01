@@ -1148,32 +1148,6 @@ export function GraphCanvas() {
               <path d="M0,2 L10,6 L0,10 L3,6 z" fill="#c084fc" />
             </marker>
             
-            <radialGradient id="node-gradient" cx="30%" cy="30%" r="70%">
-              <stop offset="0%" stopColor="#a5b4fc" />
-              <stop offset="50%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#1e1b4b" />
-            </radialGradient>
-            <radialGradient id="node-gradient-selected" cx="30%" cy="30%" r="70%">
-              <stop offset="0%" stopColor="#e879f9" />
-              <stop offset="50%" stopColor="#c084fc" />
-              <stop offset="100%" stopColor="#311060" />
-            </radialGradient>
-            
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-            
-            <filter id="glow-selected">
-              <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
           </defs>
 
           <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
@@ -1599,14 +1573,10 @@ export function GraphCanvas() {
               >
                 <circle
                   r={NODE_RADIUS}
-                  fill={isSelected || isDraftStart ? "url(#node-gradient-selected)" : "url(#node-gradient)"}
-                  className={`cursor-pointer transition-all duration-300 group-hover/node:scale-110 ${
-                    isSelected || isDraftStart
-                      ? 'stroke-purple-400'
-                      : 'stroke-indigo-500 hover:stroke-indigo-400'
-                  }`}
+                  fill={isSelected || isDraftStart ? "#312e81" : "#1e1b4b"}
+                  stroke={isSelected || isDraftStart ? "#818cf8" : "#475569"}
                   strokeWidth={isSelected || isDraftStart ? 3 : 2}
-                  filter={isSelected || isDraftStart ? "url(#glow-selected)" : "url(#glow)"}
+                  className="cursor-pointer transition-all hover:fill-slate-800"
                   onClick={(event) => {
                     event.stopPropagation()
 
