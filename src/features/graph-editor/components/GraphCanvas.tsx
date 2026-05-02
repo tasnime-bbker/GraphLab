@@ -40,7 +40,7 @@ import {
 } from '../utils/algorithmCinema'
 import { ENABLE_CLUSTER_ZONES } from '../config/featureFlags'
 import './GraphCanvas.css'
-import {Button} from "@mantine/core";
+import { Button } from "@mantine/core";
 
 const CANVAS_WIDTH = 900
 const CANVAS_HEIGHT = 520
@@ -147,7 +147,7 @@ function buildEdgeGeometry(
   const middleX = (startX + endX) / 2
   const middleY = (startY + endY) / 2
   const curveOffset = offset * 1.5
-  
+
   // Control point for the quadratic curve
   const controlX = (bundleControl?.x ?? middleX) + nx * (curveOffset + (bundleControl?.spread ?? 0))
   const controlY = (bundleControl?.y ?? middleY) + ny * (curveOffset + (bundleControl?.spread ?? 0))
@@ -179,12 +179,13 @@ function EdgeItem({
   commitWeight,
   setEditingEdgeId,
   dispatch,
-  colorScheme
+  colorScheme,
+  isGhosted
 }: any) {
   const pathRef = useRef<SVGPathElement>(null)
 
   return (
-    <g className="transition-opacity hover:opacity-80">
+    <g className={`transition-opacity duration-500 ${isGhosted ? 'opacity-[0.08]' : 'hover:opacity-80'}`}>
       <path
         d={geometry.path}
         stroke="transparent"
@@ -210,29 +211,29 @@ function EdgeItem({
         strokeLinecap="round"
         markerEnd={directed ? (isSelected ? 'url(#arrow-selected)' : 'url(#arrow)') : undefined}
       />
-      
-      <EdgeFlowParticles 
-        pathRef={pathRef} 
-        speed={directed ? 1.2 : 0.8} 
-        isActive={true} 
-        color={colorScheme === 'dark' ? '#00d4ff' : '#0e7490'} 
+
+      <EdgeFlowParticles
+        pathRef={pathRef}
+        speed={directed ? 1.2 : 0.8}
+        isActive={true}
+        color={colorScheme === 'dark' ? '#00d4ff' : '#0e7490'}
       />
       {!directed && (
-        <EdgeFlowParticles 
-          pathRef={pathRef} 
-          speed={0.8} 
-          isActive={true} 
-          reverse={true} 
-          color={colorScheme === 'dark' ? '#00d4ff' : '#0e7490'} 
+        <EdgeFlowParticles
+          pathRef={pathRef}
+          speed={0.8}
+          isActive={true}
+          reverse={true}
+          color={colorScheme === 'dark' ? '#00d4ff' : '#0e7490'}
         />
       )}
-      <EdgePulse 
-        d={geometry.path} 
-        color={isSelected 
-          ? (colorScheme === 'dark' ? '#38bdf8' : '#0369a1') 
-          : (colorScheme === 'dark' ? '#0ea5e9' : '#0284c7')} 
+      <EdgePulse
+        d={geometry.path}
+        color={isSelected
+          ? (colorScheme === 'dark' ? '#38bdf8' : '#0369a1')
+          : (colorScheme === 'dark' ? '#0ea5e9' : '#0284c7')}
       />
-      
+
       {weighted && (
         <g className="cursor-pointer" onClick={(event) => {
           event.stopPropagation()
@@ -262,7 +263,7 @@ function EdgeItem({
                 autoFocus
                 value={weightDraft}
                 className="h-7 w-14 rounded bg-slate-900 border border-blue-500 px-1 text-center text-xs font-semibold outline-none focus:ring-1 focus:ring-blue-400 shadow-[0_0_10px_rgba(14,165,233,0.4)]"
-                style={{color : 'var(--app-text)'}}
+                style={{ color: 'var(--app-text)' }}
                 onChange={(event) => {
                   setWeightDraft(event.currentTarget.value)
                   setWeightError(null)
@@ -322,6 +323,7 @@ export function GraphCanvas() {
   const [cinemaStepIndex, setCinemaStepIndex] = useState(0)
   const [cinemaPlaying, setCinemaPlaying] = useState(false)
   const [cinemaSpeed, setCinemaSpeed] = useState(1)
+  const [showOriginalContext, setShowOriginalContext] = useState(true)
   const [autoLayoutRunning, setAutoLayoutRunning] = useState(false)
   const [edgeDraftDirected, setEdgeDraftDirected] = useState(graph.directed)
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
@@ -493,7 +495,7 @@ export function GraphCanvas() {
 
     // Apply collisions so N doesn't stack nodes
     const collided = applyCollisions(worldX, worldY, null, graph.nodes, positionsRef.current, 55)
-    
+
     dispatch({ type: 'ADD_NODE', payload: { position: { x: collided.x, y: collided.y } } })
   })
 
@@ -788,7 +790,7 @@ export function GraphCanvas() {
         // Ensure snap didn't drag it back into a collision
         let finalX = snapX
         let finalY = snapY
-        
+
         setGuides({ x: guideX, y: guideY })
 
         dispatch({
@@ -927,7 +929,7 @@ export function GraphCanvas() {
         hasReverse && edge.from !== edge.to ? (edge.from < edge.to ? 16 : -16) : 0
       const geometry = buildEdgeGeometry(from, to, signedOffset, edge.hasArrow, bundleByEdgeId.get(edge.id))
       map.set(edge.id, geometry)
-      
+
       if (edge.symmetryKey) {
         const reverseEdge = graph.edges.find(e => e.symmetryKey === edge.symmetryKey && e.id !== edge.id)
         if (reverseEdge) {
@@ -1015,9 +1017,9 @@ export function GraphCanvas() {
 
         <div className="flex items-start gap-2 self-start">
           <div style={{ marginRight: 32, display: 'flex', gap: 12 }}>
-            <button 
+            <button
               className="btn-premium"
-              onClick={() => window.dispatchEvent(new CustomEvent('graph:auto-layout'))} 
+              onClick={() => window.dispatchEvent(new CustomEvent('graph:auto-layout'))}
               disabled={autoLayoutRunning}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 ${autoLayoutRunning ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1025,7 +1027,7 @@ export function GraphCanvas() {
               </svg>
               {autoLayoutRunning ? t('canvas.autoLayoutRunning') : t('params.autoLayout')}
             </button>
-            <button 
+            <button
               className="btn-danger-premium"
               onClick={() => dispatch({ type: 'RESET' })}
             >
@@ -1110,6 +1112,26 @@ export function GraphCanvas() {
             {t('query.clear')}
           </button>
         </form>
+
+        {cinemaProgram && (
+          <div className="flex justify-end mb-2 mr-2">
+            <button
+              type="button"
+              onClick={() => setShowOriginalContext(!showOriginalContext)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all duration-300 border ${showOriginalContext
+                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-[0_0_10px_rgba(56,189,248,0.1)]'
+                  : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                }`}
+              title="Toggle Background Ghosting"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+              </svg>
+              {showOriginalContext ? 'Ghosting: ON' : 'Ghosting: OFF'}
+            </button>
+          </div>
+        )}
 
         <AlgorithmCinemaPanel
           nodes={graph.nodes}
@@ -1317,456 +1339,470 @@ export function GraphCanvas() {
               )
             })}
 
-          {visualEdges.map((edge) => {
-            const geometry = edgeGeometryById.get(edge.id)
-            if (!geometry) {
-              return null
-            }
+            {visualEdges.map((edge) => {
+              const geometry = edgeGeometryById.get(edge.id)
+              if (!geometry) {
+                return null
+              }
 
-            const isSelected = interaction.selectedEdgeId === edge.id || (edge.symmetryKey !== undefined && graph.edges.find(e => e.id === interaction.selectedEdgeId)?.symmetryKey === edge.symmetryKey)
+              const isSelected = interaction.selectedEdgeId === edge.id || (edge.symmetryKey !== undefined && graph.edges.find(e => e.id === interaction.selectedEdgeId)?.symmetryKey === edge.symmetryKey)
 
-            return (
-              <EdgeItem
-                key={edge.id}
-                edge={edge}
-                geometry={geometry}
-                isSelected={isSelected}
-                directed={edge.hasArrow}
-                weighted={graph.weighted}
-                editingEdgeId={editingEdgeId}
-                weightDraft={weightDraft}
-                startWeightEdit={startWeightEdit}
-                setWeightDraft={setWeightDraft}
-                setWeightError={setWeightError}
-                commitWeight={commitWeight}
-                setEditingEdgeId={setEditingEdgeId}
-                dispatch={dispatch}
-                colorScheme={colorScheme}
-              />
-            )
-          })}
+              let isGhosted = false
+              if (showOriginalContext && currentCinemaStep) {
+                const activeEdges = new Set([
+                  ...(currentCinemaStep.treeEdges || []),
+                  ...(currentCinemaStep.pathEdges || []),
+                  ...(currentCinemaStep.mstEdges || []),
+                  currentCinemaStep.currentEdgeId
+                ])
+                if (!activeEdges.has(edge.id) && !activeEdges.has(edge.symmetryKey)) {
+                  isGhosted = true
+                }
+              }
 
-
-          {historyDiff.removedEdges.map((edgeId) => {
-            const previous = history.past[history.past.length - 1]
-            const edge = previous?.graph.edges.find((candidate) => candidate.id === edgeId)
-            if (!edge || !previous) {
-              return null
-            }
-            const from = previous.graph.positions[edge.from]
-            const to = previous.graph.positions[edge.to]
-            if (!from || !to) {
-              return null
-            }
-            const geometry = buildEdgeGeometry(from, to, 0, previous.graph.directed)
-            return (
-              <path
-                key={`removed-edge-${edgeId}`}
-                d={geometry.path}
-                fill="none"
-                stroke="#f87171"
-                strokeWidth={3}
-                strokeDasharray="6 4"
-                opacity={0.45}
-                className="history-removed-edge"
-              />
-            )
-          })}
-
-          {queryHighlights?.edges.map((edgeId) => {
-            const geometry = edgeGeometryById.get(edgeId)
-            if (!geometry) {
-              return null
-            }
-            return (
-              <path
-                key={`query-edge-${edgeId}`}
-                d={geometry.path}
-                fill="none"
-                stroke={queryHighlights.color}
-                strokeWidth={4.5}
-                strokeLinecap="round"
-                opacity={0.8}
-                className="query-highlight-pulse"
-              />
-            )
-          })}
-
-          {flashingEdgeIds.map((edgeId) => {
-            const geometry = edgeGeometryById.get(edgeId)
-            if (!geometry) {
-              return null
-            }
-            return (
-              <path
-                key={`cycle-edge-${edgeId}`}
-                d={geometry.path}
-                fill="none"
-                stroke="#60a5fa"
-                strokeWidth={5}
-                strokeLinecap="round"
-                className="cycle-flash"
-              />
-            )
-          })}
-
-          {currentCinemaStep?.treeEdges.map((edgeId) => {
-            const geometry = edgeGeometryById.get(edgeId)
-            if (!geometry) {
-              return null
-            }
-            return (
-              <path
-                key={`cinema-tree-edge-${edgeId}`}
-                d={geometry.path}
-                fill="none"
-                stroke={colorScheme === 'dark' ? '#22c55e' : '#15803d'}
-                strokeWidth={4}
-                strokeLinecap="round"
-                opacity={0.8}
-              />
-            )
-          })}
-
-          {currentCinemaStep?.pathEdges?.map((edgeId) => {
-            const geometry = edgeGeometryById.get(edgeId)
-            if (!geometry) {
-              return null
-            }
-            return (
-              <path
-                key={`dfs-path-edge-${edgeId}-${cinemaStepIndex}`}
-                d={geometry.path}
-                fill="none"
-                stroke={colorScheme === 'dark' ? '#f59e0b' : '#b45309'}
-                strokeWidth={4}
-                strokeLinecap="round"
-                className="dfs-tendril"
-              />
-            )
-          })}
-
-          {currentCinemaStep?.mstEdges?.map((edgeId) => {
-            const geometry = edgeGeometryById.get(edgeId)
-            if (!geometry) {
-              return null
-            }
-            const isNew = currentCinemaStep.mstNewEdgeId === edgeId
-            return (
-              <path
-                key={`cinema-mst-edge-${edgeId}-${cinemaStepIndex}`}
-                d={geometry.path}
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth={5}
-                strokeLinecap="round"
-                className={isNew ? 'mst-grow' : undefined}
-                opacity={0.85}
-              />
-            )
-          })}
-
-          {typeof currentCinemaStep?.rejectedEdgeId === 'string' && (() => {
-            const geometry = edgeGeometryById.get(currentCinemaStep.rejectedEdgeId)
-            if (!geometry) {
-              return null
-            }
-            return (
-              <path
-                key={`cinema-rejected-edge-${currentCinemaStep.rejectedEdgeId}-${cinemaStepIndex}`}
-                d={geometry.path}
-                fill="none"
-                stroke="#ef4444"
-                strokeWidth={5}
-                strokeLinecap="round"
-                className="rejected-flash"
-              />
-            )
-          })()}
-
-          {typeof currentCinemaStep?.currentEdgeId === 'string' && (() => {
-            const geometry = edgeGeometryById.get(currentCinemaStep.currentEdgeId)
-            if (!geometry) {
-              return null
-            }
-            return (
-              <path
-                key={`cinema-current-edge-${currentCinemaStep.currentEdgeId}-${cinemaStepIndex}`}
-                d={geometry.path}
-                fill="none"
-                stroke={colorScheme === 'dark' ? '#00e5ff' : '#0097a7'}
-                strokeWidth={4}
-                strokeLinecap="round"
-                className="cinema-edge-flash"
-              />
-            )
-          })()}
-
-          {graph.edges.map((edge) => {
-            const geometry = edgeGeometryById.get(edge.id)
-            if (!geometry) {
-              return null
-            }
-            const flow = currentCinemaStep?.flowByEdge?.[edge.id]
-            if (typeof flow !== 'number' || flow <= 0) {
-              return null
-            }
-            const capacity = Math.max(1, edge.weight)
-            const ratio = Math.max(0.05, Math.min(1, flow / capacity))
-            const isSaturated = currentCinemaStep?.saturatedEdgeIds?.includes(edge.id) ?? false
-
-            return (
-              <path
-                key={`flow-${edge.id}-${cinemaStepIndex}`}
-                d={geometry.path}
-                fill="none"
-                stroke={isSaturated 
-                  ? (colorScheme === 'dark' ? '#ef4444' : '#b91c1c') 
-                  : (colorScheme === 'dark' ? '#60a5fa' : '#1d4ed8')}
-                strokeWidth={Math.max(2, 8 * ratio)}
-                strokeLinecap="round"
-                opacity={0.75}
-                className={isSaturated ? 'flow-saturated' : undefined}
-              />
-            )
-          })}
-
-          {currentCinemaStep?.augmentingEdgeIds?.map((edgeId) => {
-            const geometry = edgeGeometryById.get(edgeId)
-            if (!geometry) {
-              return null
-            }
-            return (
-              <path
-                key={`augmenting-${edgeId}-${cinemaStepIndex}`}
-                d={geometry.path}
-                fill="none"
-                stroke={colorScheme === 'dark' ? '#a78bfa' : '#6d28d9'}
-                strokeWidth={3}
-                strokeLinecap="round"
-                strokeDasharray="10 6"
-                className="augmenting-pulse"
-              />
-            )
-          })}
-
-          {edgeDraftPosition !== null && cursorPosition !== null && (
-            <line
-              x1={edgeDraftPosition.x}
-              y1={edgeDraftPosition.y}
-              x2={cursorPosition.x}
-              y2={cursorPosition.y}
-              className="stroke-blue-400"
-              strokeWidth={2}
-              strokeDasharray="6 4"
-              filter="url(#glow)"
-            />
-          )}
-
-          {historyDiff.removedNodes.map((nodeId) => {
-            const previous = history.past[history.past.length - 1]
-            const position = previous?.graph.positions[nodeId]
-            if (!position) {
-              return null
-            }
-            return (
-              <circle
-                key={`removed-node-${nodeId}`}
-                cx={position.x}
-                cy={position.y}
-                r={NODE_RADIUS + 3}
-                fill="none"
-                stroke="#f87171"
-                strokeWidth={3}
-                strokeDasharray="5 4"
-                opacity={0.5}
-              />
-            )
-          })}
-
-          {graph.nodes.map((nodeId) => {
-            const position = graph.positions[nodeId]
-            if (!position) {
-              return null
-            }
-
-            const isSelected = interaction.selectedNodeId === nodeId
-            const isDraftStart = interaction.edgeDraftFrom === nodeId
-            const isQueryNode = queryHighlights?.nodes.includes(nodeId) ?? false
-            const isAddedNode = historyDiff.addedNodes.includes(nodeId)
-            const isCinemaVisited = currentCinemaStep?.visited.includes(nodeId) ?? false
-            const isCinemaFrontier = currentCinemaStep?.frontier.includes(nodeId) ?? false
-            const isCinemaCurrent = currentCinemaStep?.currentNode === nodeId
-            const isDijkstra = cinemaProgram?.algorithm === 'Dijkstra'
-            const distance = currentCinemaStep?.distances?.[nodeId]
-            const finiteDistances = currentCinemaStep?.distances
-              ? Object.values(currentCinemaStep.distances)
-              : []
-            const maxDistance =
-              finiteDistances.length > 0
-                ? Math.max(...finiteDistances)
-                : 1
-            const haloRadius =
-              typeof distance === 'number'
-                ? NODE_RADIUS + 8 + Math.min(72, (distance / Math.max(maxDistance, 1)) * 72)
-                : NODE_RADIUS + 8
-            const haloHue =
-              typeof distance === 'number'
-                ? Math.round(250 - Math.min(1, distance / Math.max(maxDistance, 1)) * 180)
-                : 240
-            const shouldShowHalo =
-              isDijkstra && typeof distance === 'number' && !(currentCinemaStep?.visited.includes(nodeId) ?? false)
-
-            // Welsh-Powell : couleur distincte par groupe de coloration
-            const cinemaColorGroup = currentCinemaStep?.colorGroups?.find(g =>
-              g.nodeIds.includes(nodeId)
-            ) ?? null
-
-            return (
-              <g
-                key={nodeId}
-                transform={`translate(${position.x} ${position.y})`}
-                className="node-wrapper group/node"
-                data-node-id={nodeId}
-                onContextMenu={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  dispatch({ type: 'DELETE_NODE', payload: { nodeId } })
-                  setEditingEdgeId(null)
-                }}
-              >
-                <circle
-                  r={NODE_RADIUS}
-                  fill={isSelected || isDraftStart ? "var(--app-accent)" : "var(--app-surface-strong)"}
-                  fillOpacity={isSelected || isDraftStart ? 0.25 : 1}
-                  stroke="var(--app-accent)"
-                  strokeOpacity={isSelected || isDraftStart ? 1 : 0.35}
-                  strokeWidth={isSelected || isDraftStart ? 3.5 : 2.2}
-                  className={`cursor-pointer transition-all hover:stroke-opacity-100 ${isSelected ? 'selected-glow' : ''}`}
-                  style={{ 
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' 
-                  }}
-                  onClick={(event) => {
-                    event.stopPropagation()
-
-                    if (interaction.edgeDraftFrom === null) {
-                      dispatch({ type: 'START_EDGE_DRAFT', payload: { from: nodeId } })
-                      dispatch({ type: 'SET_SELECTED_NODE', payload: { nodeId } })
-                      setEditingEdgeId(null)
-                      return
-                    }
-
-                    if (interaction.edgeDraftFrom === nodeId) {
-                      dispatch({ type: 'CLEAR_EDGE_DRAFT' })
-                      return
-                    }
-
-                    dispatch({
-                      type: 'ADD_EDGE',
-                      payload: {
-                        from: interaction.edgeDraftFrom,
-                        to: nodeId,
-                        directed: edgeDraftDirected,
-                      },
-                    })
-                    // Clear selection states to remove "active" effects
-                    dispatch({ type: 'SET_SELECTED_NODE', payload: { nodeId: null } })
-                    dispatch({ type: 'SET_SELECTED_EDGE', payload: { edgeId: null } })
-                    dispatch({ type: 'CLEAR_EDGE_DRAFT' })
-                    
-                    const closeSearchEvent = new CustomEvent('toolbar:close-search')
-                    window.dispatchEvent(closeSearchEvent)
-                  }}
+              return (
+                <EdgeItem
+                  key={edge.id}
+                  edge={edge}
+                  geometry={geometry}
+                  isSelected={isSelected}
+                  directed={edge.hasArrow}
+                  weighted={graph.weighted}
+                  editingEdgeId={editingEdgeId}
+                  weightDraft={weightDraft}
+                  startWeightEdit={startWeightEdit}
+                  setWeightDraft={setWeightDraft}
+                  setWeightError={setWeightError}
+                  commitWeight={commitWeight}
+                  setEditingEdgeId={setEditingEdgeId}
+                  dispatch={dispatch}
+                  colorScheme={colorScheme}
+                  isGhosted={isGhosted}
                 />
-                {shouldShowHalo && (
+              )
+            })}
+
+
+            {historyDiff.removedEdges.map((edgeId) => {
+              const previous = history.past[history.past.length - 1]
+              const edge = previous?.graph.edges.find((candidate) => candidate.id === edgeId)
+              if (!edge || !previous) {
+                return null
+              }
+              const from = previous.graph.positions[edge.from]
+              const to = previous.graph.positions[edge.to]
+              if (!from || !to) {
+                return null
+              }
+              const geometry = buildEdgeGeometry(from, to, 0, previous.graph.directed)
+              return (
+                <path
+                  key={`removed-edge-${edgeId}`}
+                  d={geometry.path}
+                  fill="none"
+                  stroke="#f87171"
+                  strokeWidth={3}
+                  strokeDasharray="6 4"
+                  opacity={0.45}
+                  className="history-removed-edge"
+                />
+              )
+            })}
+
+            {queryHighlights?.edges.map((edgeId) => {
+              const geometry = edgeGeometryById.get(edgeId)
+              if (!geometry) {
+                return null
+              }
+              return (
+                <path
+                  key={`query-edge-${edgeId}`}
+                  d={geometry.path}
+                  fill="none"
+                  stroke={queryHighlights.color}
+                  strokeWidth={4.5}
+                  strokeLinecap="round"
+                  opacity={0.8}
+                  className="query-highlight-pulse"
+                />
+              )
+            })}
+
+            {flashingEdgeIds.map((edgeId) => {
+              const geometry = edgeGeometryById.get(edgeId)
+              if (!geometry) {
+                return null
+              }
+              return (
+                <path
+                  key={`cycle-edge-${edgeId}`}
+                  d={geometry.path}
+                  fill="none"
+                  stroke="#60a5fa"
+                  strokeWidth={5}
+                  strokeLinecap="round"
+                  className="cycle-flash"
+                />
+              )
+            })}
+
+            {currentCinemaStep?.treeEdges.map((edgeId) => {
+              const geometry = edgeGeometryById.get(edgeId)
+              if (!geometry) {
+                return null
+              }
+              return (
+                <path
+                  key={`cinema-tree-edge-${edgeId}`}
+                  d={geometry.path}
+                  fill="none"
+                  stroke={colorScheme === 'dark' ? '#22c55e' : '#15803d'}
+                  strokeWidth={4}
+                  strokeLinecap="round"
+                  opacity={0.8}
+                />
+              )
+            })}
+
+            {currentCinemaStep?.pathEdges?.map((edgeId) => {
+              const geometry = edgeGeometryById.get(edgeId)
+              if (!geometry) {
+                return null
+              }
+              return (
+                <path
+                  key={`dfs-path-edge-${edgeId}-${cinemaStepIndex}`}
+                  d={geometry.path}
+                  fill="none"
+                  stroke={colorScheme === 'dark' ? '#f59e0b' : '#b45309'}
+                  strokeWidth={4}
+                  strokeLinecap="round"
+                  className="dfs-tendril"
+                />
+              )
+            })}
+
+            {currentCinemaStep?.mstEdges?.map((edgeId) => {
+              const geometry = edgeGeometryById.get(edgeId)
+              if (!geometry) {
+                return null
+              }
+              const isNew = currentCinemaStep.mstNewEdgeId === edgeId
+              return (
+                <path
+                  key={`cinema-mst-edge-${edgeId}-${cinemaStepIndex}`}
+                  d={geometry.path}
+                  fill="none"
+                  stroke="#38bdf8"
+                  strokeWidth={5}
+                  strokeLinecap="round"
+                  className={isNew ? 'mst-grow' : undefined}
+                  opacity={0.85}
+                />
+              )
+            })}
+
+            {typeof currentCinemaStep?.rejectedEdgeId === 'string' && (() => {
+              const geometry = edgeGeometryById.get(currentCinemaStep.rejectedEdgeId)
+              if (!geometry) {
+                return null
+              }
+              return (
+                <path
+                  key={`cinema-rejected-edge-${currentCinemaStep.rejectedEdgeId}-${cinemaStepIndex}`}
+                  d={geometry.path}
+                  fill="none"
+                  stroke="#ef4444"
+                  strokeWidth={5}
+                  strokeLinecap="round"
+                  className="rejected-flash"
+                />
+              )
+            })()}
+
+            {typeof currentCinemaStep?.currentEdgeId === 'string' && (() => {
+              const geometry = edgeGeometryById.get(currentCinemaStep.currentEdgeId)
+              if (!geometry) {
+                return null
+              }
+              return (
+                <path
+                  key={`cinema-current-edge-${currentCinemaStep.currentEdgeId}-${cinemaStepIndex}`}
+                  d={geometry.path}
+                  fill="none"
+                  stroke={colorScheme === 'dark' ? '#00e5ff' : '#0097a7'}
+                  strokeWidth={4}
+                  strokeLinecap="round"
+                  className="cinema-edge-flash"
+                />
+              )
+            })()}
+
+            {graph.edges.map((edge) => {
+              const geometry = edgeGeometryById.get(edge.id)
+              if (!geometry) {
+                return null
+              }
+              const flow = currentCinemaStep?.flowByEdge?.[edge.id]
+              if (typeof flow !== 'number' || flow <= 0) {
+                return null
+              }
+              const capacity = Math.max(1, edge.weight)
+              const ratio = Math.max(0.05, Math.min(1, flow / capacity))
+              const isSaturated = currentCinemaStep?.saturatedEdgeIds?.includes(edge.id) ?? false
+
+              return (
+                <path
+                  key={`flow-${edge.id}-${cinemaStepIndex}`}
+                  d={geometry.path}
+                  fill="none"
+                  stroke={isSaturated
+                    ? (colorScheme === 'dark' ? '#ef4444' : '#b91c1c')
+                    : (colorScheme === 'dark' ? '#60a5fa' : '#1d4ed8')}
+                  strokeWidth={Math.max(2, 8 * ratio)}
+                  strokeLinecap="round"
+                  opacity={0.75}
+                  className={isSaturated ? 'flow-saturated' : undefined}
+                />
+              )
+            })}
+
+            {currentCinemaStep?.augmentingEdgeIds?.map((edgeId) => {
+              const geometry = edgeGeometryById.get(edgeId)
+              if (!geometry) {
+                return null
+              }
+              return (
+                <path
+                  key={`augmenting-${edgeId}-${cinemaStepIndex}`}
+                  d={geometry.path}
+                  fill="none"
+                  stroke={colorScheme === 'dark' ? '#a78bfa' : '#6d28d9'}
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  strokeDasharray="10 6"
+                  className="augmenting-pulse"
+                />
+              )
+            })}
+
+            {edgeDraftPosition !== null && cursorPosition !== null && (
+              <line
+                x1={edgeDraftPosition.x}
+                y1={edgeDraftPosition.y}
+                x2={cursorPosition.x}
+                y2={cursorPosition.y}
+                className="stroke-blue-400"
+                strokeWidth={2}
+                strokeDasharray="6 4"
+                filter="url(#glow)"
+              />
+            )}
+
+            {historyDiff.removedNodes.map((nodeId) => {
+              const previous = history.past[history.past.length - 1]
+              const position = previous?.graph.positions[nodeId]
+              if (!position) {
+                return null
+              }
+              return (
+                <circle
+                  key={`removed-node-${nodeId}`}
+                  cx={position.x}
+                  cy={position.y}
+                  r={NODE_RADIUS + 3}
+                  fill="none"
+                  stroke="#f87171"
+                  strokeWidth={3}
+                  strokeDasharray="5 4"
+                  opacity={0.5}
+                />
+              )
+            })}
+
+            {graph.nodes.map((nodeId) => {
+              const position = graph.positions[nodeId]
+              if (!position) {
+                return null
+              }
+
+              const isSelected = interaction.selectedNodeId === nodeId
+              const isDraftStart = interaction.edgeDraftFrom === nodeId
+              const isQueryNode = queryHighlights?.nodes.includes(nodeId) ?? false
+              const isAddedNode = historyDiff.addedNodes.includes(nodeId)
+              const isCinemaVisited = currentCinemaStep?.visited.includes(nodeId) ?? false
+              const isCinemaFrontier = currentCinemaStep?.frontier.includes(nodeId) ?? false
+              const isCinemaCurrent = currentCinemaStep?.currentNode === nodeId
+              const isDijkstra = cinemaProgram?.algorithm === 'Dijkstra'
+              const distance = currentCinemaStep?.distances?.[nodeId]
+              const finiteDistances = currentCinemaStep?.distances
+                ? Object.values(currentCinemaStep.distances)
+                : []
+              const maxDistance =
+                finiteDistances.length > 0
+                  ? Math.max(...finiteDistances)
+                  : 1
+              const haloRadius =
+                typeof distance === 'number'
+                  ? NODE_RADIUS + 8 + Math.min(72, (distance / Math.max(maxDistance, 1)) * 72)
+                  : NODE_RADIUS + 8
+              const haloHue =
+                typeof distance === 'number'
+                  ? Math.round(250 - Math.min(1, distance / Math.max(maxDistance, 1)) * 180)
+                  : 240
+              const shouldShowHalo =
+                isDijkstra && typeof distance === 'number' && !(currentCinemaStep?.visited.includes(nodeId) ?? false)
+
+              // Welsh-Powell : couleur distincte par groupe de coloration
+              const cinemaColorGroup = currentCinemaStep?.colorGroups?.find(g =>
+                g.nodeIds.includes(nodeId)
+              ) ?? null
+
+              return (
+                <g
+                  key={nodeId}
+                  transform={`translate(${position.x} ${position.y})`}
+                  className="node-wrapper group/node"
+                  data-node-id={nodeId}
+                  onContextMenu={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    dispatch({ type: 'DELETE_NODE', payload: { nodeId } })
+                    setEditingEdgeId(null)
+                  }}
+                >
                   <circle
-                    r={haloRadius}
-                    fill="none"
-                    stroke={distance === 0 
-                      ? (colorScheme === 'dark' ? '#0055cc' : '#1d4ed8') 
-                      : (colorScheme === 'dark' ? '#00aaff' : '#0284c7')}
-                    strokeWidth={2.5}
-                    opacity={0.5}
-                    className="dijkstra-halo"
+                    r={NODE_RADIUS}
+                    fill={isSelected || isDraftStart ? "var(--app-accent)" : "var(--app-surface-strong)"}
+                    fillOpacity={isSelected || isDraftStart ? 0.25 : 1}
+                    stroke="var(--app-accent)"
+                    strokeOpacity={isSelected || isDraftStart ? 1 : 0.35}
+                    strokeWidth={isSelected || isDraftStart ? 3.5 : 2.2}
+                    className={`cursor-pointer transition-all hover:stroke-opacity-100 ${isSelected ? 'selected-glow' : ''}`}
+                    style={{
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation()
+
+                      if (interaction.edgeDraftFrom === null) {
+                        dispatch({ type: 'START_EDGE_DRAFT', payload: { from: nodeId } })
+                        dispatch({ type: 'SET_SELECTED_NODE', payload: { nodeId } })
+                        setEditingEdgeId(null)
+                        return
+                      }
+
+                      if (interaction.edgeDraftFrom === nodeId) {
+                        dispatch({ type: 'CLEAR_EDGE_DRAFT' })
+                        return
+                      }
+
+                      dispatch({
+                        type: 'ADD_EDGE',
+                        payload: {
+                          from: interaction.edgeDraftFrom,
+                          to: nodeId,
+                          directed: edgeDraftDirected,
+                        },
+                      })
+                      // Clear selection states to remove "active" effects
+                      dispatch({ type: 'SET_SELECTED_NODE', payload: { nodeId: null } })
+                      dispatch({ type: 'SET_SELECTED_EDGE', payload: { edgeId: null } })
+                      dispatch({ type: 'CLEAR_EDGE_DRAFT' })
+
+                      const closeSearchEvent = new CustomEvent('toolbar:close-search')
+                      window.dispatchEvent(closeSearchEvent)
+                    }}
                   />
-                )}
-                {isQueryNode && (
-                  <circle
-                    r={NODE_RADIUS + 10}
-                    fill="none"
-                    stroke={queryHighlights?.color ?? '#4ade80'}
-                    strokeWidth={2.5}
-                    className="query-highlight-pulse"
-                  />
-                )}
-                {/* Anneau coloré Welsh-Powell : affiché à la place du vert générique si le nœud a une couleur */}
-                {cinemaColorGroup !== null ? (
-                  <circle
-                    r={NODE_RADIUS + 5}
-                    fill={cinemaColorGroup.color + '22'}
-                    stroke={cinemaColorGroup.color}
-                    strokeWidth={2.5}
-                    opacity={0.9}
-                  />
-                ) : (
-                  isCinemaVisited && (
+                  {shouldShowHalo && (
+                    <circle
+                      r={haloRadius}
+                      fill="none"
+                      stroke={distance === 0
+                        ? (colorScheme === 'dark' ? '#0055cc' : '#1d4ed8')
+                        : (colorScheme === 'dark' ? '#00aaff' : '#0284c7')}
+                      strokeWidth={2.5}
+                      opacity={0.5}
+                      className="dijkstra-halo"
+                    />
+                  )}
+                  {isQueryNode && (
+                    <circle
+                      r={NODE_RADIUS + 10}
+                      fill="none"
+                      stroke={queryHighlights?.color ?? '#4ade80'}
+                      strokeWidth={2.5}
+                      className="query-highlight-pulse"
+                    />
+                  )}
+                  {/* Anneau coloré Welsh-Powell : affiché à la place du vert générique si le nœud a une couleur */}
+                  {cinemaColorGroup !== null ? (
                     <circle
                       r={NODE_RADIUS + 5}
-                      fill="none"
-                      stroke={colorScheme === 'dark' ? '#22c55e' : '#15803d'}
+                      fill={cinemaColorGroup.color + '22'}
+                      stroke={cinemaColorGroup.color}
                       strokeWidth={2.5}
-                      opacity={0.8}
+                      opacity={0.9}
                     />
-                  )
-                )}
-                {isCinemaFrontier && (
-                  <circle
-                    r={NODE_RADIUS + 9}
-                    fill="none"
-                    stroke={colorScheme === 'dark' ? '#f59e0b' : '#b45309'}
-                    strokeWidth={2}
-                    className={cinemaProgram?.algorithm === 'BFS' ? 'bfs-wavefront' : 'frontier-pulse'}
-                  />
-                )}
-                {isCinemaCurrent && (
-                  <circle
-                    r={NODE_RADIUS + 12}
-                    fill="none"
-                    stroke={colorScheme === 'dark' ? '#00e5ff' : '#0097a7'}
-                    strokeWidth={3}
-                    className="cinema-current-node"
-                  />
-                )}
-                <text
-                  className="pointer-events-none text-[13px] font-bold"
-                  style={{ fill: 'var(--app-text)' }}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  dy="1"
-                >
-                  {nodeId}
+                  ) : (
+                    isCinemaVisited && (
+                      <circle
+                        r={NODE_RADIUS + 5}
+                        fill="none"
+                        stroke={colorScheme === 'dark' ? '#22c55e' : '#15803d'}
+                        strokeWidth={2.5}
+                        opacity={0.8}
+                      />
+                    )
+                  )}
+                  {isCinemaFrontier && (
+                    <circle
+                      r={NODE_RADIUS + 9}
+                      fill="none"
+                      stroke={colorScheme === 'dark' ? '#f59e0b' : '#b45309'}
+                      strokeWidth={2}
+                      className={cinemaProgram?.algorithm === 'BFS' ? 'bfs-wavefront' : 'frontier-pulse'}
+                    />
+                  )}
+                  {isCinemaCurrent && (
+                    <circle
+                      r={NODE_RADIUS + 12}
+                      fill="none"
+                      stroke={colorScheme === 'dark' ? '#00e5ff' : '#0097a7'}
+                      strokeWidth={3}
+                      className="cinema-current-node"
+                    />
+                  )}
+                  <text
+                    className="pointer-events-none text-[13px] font-bold"
+                    style={{ fill: 'var(--app-text)' }}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    dy="1"
+                  >
+                    {nodeId}
+                  </text>
+                </g>
+              )
+            })}
+
+            {bursts.map(b => (
+              <ParticleBurst
+                key={b.id}
+                x={b.x}
+                y={b.y}
+                onComplete={() => setBursts(prev => prev.filter(p => p.id !== b.id))}
+              />
+            ))}
+
+            {typeof currentCinemaStep?.mstWeight === 'number' && (
+              <g transform="translate(18 34)">
+                <rect width="150" height="30" rx="8" fill="rgba(15,23,42,0.85)" stroke="rgba(56,189,248,0.65)" />
+                <text x="10" y="20" className="fill-sky-300 text-[12px] font-semibold">
+                  MST Weight: {currentCinemaStep.mstWeight}
                 </text>
               </g>
-            )
-          })}
-          
-          {bursts.map(b => (
-            <ParticleBurst
-              key={b.id}
-              x={b.x}
-              y={b.y}
-              onComplete={() => setBursts(prev => prev.filter(p => p.id !== b.id))}
-            />
-          ))}
-
-          {typeof currentCinemaStep?.mstWeight === 'number' && (
-            <g transform="translate(18 34)">
-              <rect width="150" height="30" rx="8" fill="rgba(15,23,42,0.85)" stroke="rgba(56,189,248,0.65)" />
-              <text x="10" y="20" className="fill-sky-300 text-[12px] font-semibold">
-                MST Weight: {currentCinemaStep.mstWeight}
-              </text>
-            </g>
-          )}
+            )}
           </g>
         </svg>
 
@@ -1792,7 +1828,7 @@ export function GraphCanvas() {
                   y1={from.y * minimapScaleY}
                   x2={to.x * minimapScaleX}
                   y2={to.y * minimapScaleY}
-                   stroke="var(--app-accent)"
+                  stroke="var(--app-accent)"
                   strokeWidth={1}
                 />
               )
@@ -1824,7 +1860,7 @@ export function GraphCanvas() {
           </svg>
         </div>
         <GraphMetrics nodes={graph.nodes} edges={graph.edges} directed={graph.directed} />
-        
+
         <CanvasToolbar
           onAddNode={() => {
             const viewportX = CANVAS_WIDTH / 2
@@ -1833,7 +1869,7 @@ export function GraphCanvas() {
             let worldY = (viewportY - transform.y) / transform.k
             const collided = applyCollisions(worldX, worldY, null, graph.nodes, positionsRef.current, 55)
             dispatch({ type: 'ADD_NODE', payload: { position: { x: collided.x, y: collided.y } } })
-            
+
             // deselect find node
             window.dispatchEvent(new CustomEvent('toolbar:close-search'))
           }}

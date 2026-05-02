@@ -1,6 +1,7 @@
 import type { NodeId } from '../../graph/model/types'
 import type { CinemaAlgorithm } from '../utils/algorithmCinema'
 import { useI18n } from '../../../shared/context/I18nContext'
+import { AlgorithmEducationalCard } from './AlgorithmEducationalCard'
 
 interface AlgorithmCinemaPanelProps {
   nodes: NodeId[]
@@ -264,6 +265,9 @@ export function AlgorithmCinemaPanel({
             {narration || t('cinema.narration')}
           </p>
         </div>
+
+        {/* ── Educational Section ─────────────────────────────────────────── */}
+        <AlgorithmEducationalCard algorithm={algorithm} />
       </div>
     </div>
   )
