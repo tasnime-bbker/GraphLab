@@ -3,10 +3,15 @@ import { useGraphDispatch, useGraphState } from '../../graph/state/useGraphStore
 import { useI18n } from '../../../shared/context/I18nContext'
 import { toDOT } from '../utils/exportFormats'
 
+type LocaleText = {
+  en: string
+  fr: string
+}
+
 interface Command {
   id: string
-  name: string
-  description: string
+  name: LocaleText
+  description: LocaleText
   shortcut?: string
   action: () => void
 }
@@ -14,18 +19,29 @@ interface Command {
 export function CommandPalette() {
   const dispatch = useGraphDispatch()
   const { graph } = useGraphState()
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
 
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
 
+  const formatLocaleText = (text: LocaleText) => {
+    return locale === 'fr' ? `${text.fr}` : `${text.en}`
+  }
+
+  const matchesQuery = (text: LocaleText, normalizedQuery: string) => {
+    return [text.en, text.fr].some((value) => value.toLowerCase().includes(normalizedQuery))
+  }
+
   const commands: Command[] = useMemo(
     () => [
       {
         id: 'add-5-nodes',
-        name: 'Add 5 nodes',
-        description: 'Add five nodes near the center',
+        name: { en: 'Add 5 nodes', fr: 'Ajouter 5 nœuds' },
+        description: {
+          en: 'Add five nodes near the center',
+          fr: 'Ajouter cinq nœuds près du centre',
+        },
         action: () => {
           const baseX = 350
           const baseY = 220
@@ -44,20 +60,29 @@ export function CommandPalette() {
       },
       {
         id: 'toggle-directed',
-        name: 'Toggle directed',
-        description: 'Switch directed mode on/off',
+        name: { en: 'Toggle directed', fr: 'Activer / désactiver l’orientation' },
+        description: {
+          en: 'Switch directed mode on/off',
+          fr: 'Basculer le mode orienté',
+        },
         action: () => dispatch({ type: 'SET_DIRECTED', payload: { directed: !graph.directed } }),
       },
       {
         id: 'toggle-weighted',
-        name: 'Toggle weighted',
-        description: 'Switch weighted mode on/off',
+        name: { en: 'Toggle weighted', fr: 'Activer / désactiver les poids' },
+        description: {
+          en: 'Switch weighted mode on/off',
+          fr: 'Basculer le mode pondéré',
+        },
         action: () => dispatch({ type: 'SET_WEIGHTED', payload: { weighted: !graph.weighted } }),
       },
       {
         id: 'set-all-weights-5',
-        name: 'Set all weights to 5',
-        description: 'Set every edge weight to 5',
+        name: { en: 'Set all weights to 5', fr: 'Mettre tous les poids à 5' },
+        description: {
+          en: 'Set every edge weight to 5',
+          fr: 'Définir le poids de chaque arête à 5',
+        },
         action: () => {
           if (!graph.weighted) {
             dispatch({ type: 'SET_WEIGHTED', payload: { weighted: true } })
@@ -69,14 +94,20 @@ export function CommandPalette() {
       },
       {
         id: 'auto-layout',
-        name: 'Run auto layout',
-        description: 'Start force-directed layout animation',
+        name: { en: 'Run auto layout', fr: 'Lancer le placement automatique' },
+        description: {
+          en: 'Start force-directed layout animation',
+          fr: 'Démarrer l’animation de placement par forces',
+        },
         action: () => window.dispatchEvent(new CustomEvent('graph:auto-layout')),
       },
       {
         id: 'run-bfs',
-        name: 'Run BFS from first node',
-        description: 'Generate cinema steps and start playback from first node',
+        name: { en: 'Run BFS from first node', fr: 'Lancer BFS depuis le premier nœud' },
+        description: {
+          en: 'Generate cinema steps and start playback from first node',
+          fr: 'Générer les étapes cinéma et démarrer la lecture depuis le premier nœud',
+        },
         action: () => {
           if (graph.nodes.length === 0) {
             return
@@ -94,16 +125,22 @@ export function CommandPalette() {
       },
       {
         id: 'copy-dot',
-        name: 'Copy DOT export',
-        description: 'Copy Graphviz DOT representation to clipboard',
+        name: { en: 'Copy DOT export', fr: 'Copier l’export DOT' },
+        description: {
+          en: 'Copy Graphviz DOT representation to clipboard',
+          fr: 'Copier la représentation Graphviz DOT dans le presse-papiers',
+        },
         action: () => {
           void navigator.clipboard.writeText(toDOT(graph))
         },
       },
       {
         id: 'reset-graph',
-        name: 'Reset graph',
-        description: 'Clear everything and reset defaults',
+        name: { en: 'Reset graph', fr: 'Réinitialiser le graphe' },
+        description: {
+          en: 'Clear everything and reset defaults',
+          fr: 'Tout effacer et rétablir les paramètres par défaut',
+        },
         action: () => dispatch({ type: 'RESET' }),
       },
     ],
@@ -117,8 +154,7 @@ export function CommandPalette() {
     }
     return commands.filter(
       (command) =>
-        command.name.toLowerCase().includes(normalized) ||
-        command.description.toLowerCase().includes(normalized),
+        matchesQuery(command.name, normalized) || matchesQuery(command.description, normalized),
     )
   }, [commands, query])
 
@@ -208,7 +244,7 @@ export function CommandPalette() {
 
         <ul className="max-h-[360px] overflow-auto p-2">
           {filteredCommands.length === 0 && (
-            <li className="rounded-md px-3 py-2 text-sm text-slate-400">{t('palette.noMatch')}</li>
+            <li className="rounded-md px-3 py-2 text-sm " style={{color : 'var(--app-text)'}}>{t('palette.noMatch')}</li>
           )}
 
           {filteredCommands.map((command, index) => {
@@ -217,7 +253,8 @@ export function CommandPalette() {
               <li key={command.id}>
                 <button
                   type="button"
-                  className={`w-full rounded-md px-3 py-2 text-left transition-colors ${selected ? 'bg-indigo-500/20 text-white' : 'text-slate-200 hover:bg-slate-800/80'}`}
+                  className={`w-full rounded-md px-3 py-2 text-left transition-colors ${selected ? 'bg-indigo-500/20' : 'text-slate-200 hover:bg-slate-800/80'}`}
+                  style={{color : 'var(--app-text)'}}
                   onMouseEnter={() => setSelectedIndex(index)}
                   onClick={() => {
                     command.action()
@@ -227,10 +264,10 @@ export function CommandPalette() {
                   }}
                 >
                   <div className="flex items-center justify-between gap-3 text-sm">
-                    <span className="font-medium">{command.name}</span>
-                    {command.shortcut && <span className="text-xs text-slate-400">{command.shortcut}</span>}
+                    <span className="font-medium">{formatLocaleText(command.name)}</span>
+                    {command.shortcut && <span className="text-xs" style={{color : 'var(--app-text)'}}>{command.shortcut}</span>}
                   </div>
-                  <p className="mt-0.5 text-xs text-slate-400">{command.description}</p>
+                  <p className="mt-0.5 text-xs" style={{color : 'var(--app-text)'}}>{formatLocaleText(command.description)}</p>
                 </button>
               </li>
             )

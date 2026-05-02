@@ -1,8 +1,7 @@
 import type { GraphEdge, GraphState, NodeId } from '../../graph/model/types'
-import { findEulerianPathOrCircuit } from '../../graph/utils/graphAnalysis'
+import { findEulerianPathOrCircuit, buildEulerianTraceReport } from '../../graph/utils/graphAnalysis'
 
-
-export type CinemaAlgorithm = 'BFS' | 'DFS' | 'Dijkstra' | 'Prims' | 'Kruskals' | 'MaxFlow' | 'ConnectedComponents' | 'SpanningForest' | 'StronglyConnectedComponents' | 'Bellman' | 'BellmanFord' | 'WelshPowell' | 'EulerienPath'
+export type CinemaAlgorithm = 'BFS' | 'DFS' | 'Dijkstra' | 'Prims' | 'Kruskals' | 'MaxFlow' | 'ConnectedComponents' | 'SpanningForest' | 'StronglyConnectedComponents' | 'Bellman' | 'BellmanFord' | 'WelshPowell' | 'EulerienPath' | 'RechercheChaine'
 
 export interface CinemaStep {
   narration: string
@@ -998,171 +997,229 @@ function buildStronglyConnectedComponentsProgram(graph: GraphState): CinemaStep[
   return steps
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// WELSH-POWELL — Coloration de graphe
-//
-// FLUX GÉNÉRAL :
-//   1. Calculer le degré de chaque sommet (nombre de voisins).
-//   2. Trier les sommets par degré décroissant → liste ordonnée X1, X2,…, Xn.
-//   3. Attribuer une nouvelle couleur au premier sommet non encore coloré.
-//   4. Parcourir le reste de la liste : attribuer cette même couleur à chaque
-//      sommet non coloré et non adjacent à un sommet déjà de cette couleur.
-//   5. S'il reste des sommets non colorés, retourner à l'étape 3.
-//      Sinon, la coloration est terminée.
-//
-// RENDU VISUEL (CinemaStep) :
-//   • colorGroups  → tableau de { color, nodeIds } → anneaux colorés distincts
-//                    par groupe dans GraphCanvas (C1=bleu, C2=orange, C3=vert…).
-//   • frontier     → sommet en cours d'examen → anneau ambre.
-//   • currentNode  → sommet actif → anneau blanc tournant.
-//   • visited / frontier / treeEdges → toujours [] (obligatoires pour le
-//     contrat CinemaStep car GraphCanvas y accède sans optional chaining).
-// ─────────────────────────────────────────────────────────────────────────────
-function buildWelshPowellProgram(graph: GraphState): CinemaStep[] {
+function buildSearchChainProgram(graph: GraphState, source: NodeId, target: NodeId): CinemaStep[] {
   const steps: CinemaStep[] = []
 
-  // ── 1. CALCUL DES DEGRÉS ──────────────────────────────────────────────────
-  // Le degré d'un sommet pour la coloration = nombre de voisins distincts.
-  // On ignore la direction (une arête A->B ou B->A crée un conflit entre A et B).
-  // On ignore les arêtes multiples (elles ne créent qu'un seul conflit).
-  // On ignore les boucles (self-loops) car elles ne lient pas le sommet à d'autres.
-  const degrees: Record<NodeId, number> = {}
-  for (const node of graph.nodes) {
-    const uniqueNeighbors = new Set(
-      neighborsFor(graph, node, true)
-        .map(n => n.nodeId)
-        .filter(neighborId => neighborId !== node)
-    )
-    degrees[node] = uniqueNeighbors.size
-  }
-
-  // ── 2. TRI DÉCROISSANT ────────────────────────────────────────────────────
-  // On trie du degré le plus élevé au plus bas.
-  // En cas d'égalité, on trie par ID pour garantir un ordre stable et déterministe.
-  const sortedNodes = [...graph.nodes].sort((a, b) => {
-    if (degrees[b] !== degrees[a]) return degrees[b] - degrees[a]
-    return a - b
-  })
-
-  // nodeColors[sommet] = index de couleur (0 = C1, 1 = C2, …)
-  const nodeColors: Record<NodeId, number> = {}
-  let colorIndex = 0
-
-  // buildColorGroups : construit le tableau colorGroups à partir de l'état
-  // courant de nodeColors. C'est ce tableau que GraphCanvas lit pour afficher
-  // des anneaux de couleurs distinctes autour de chaque groupe de sommets.
-  const buildColorGroups = (): Array<{ color: string; nodeIds: NodeId[] }> => {
-    const groups: Record<number, NodeId[]> = {}
-    for (const [nodeStr, idx] of Object.entries(nodeColors)) {
-      if (!groups[idx]) groups[idx] = []
-      groups[idx].push(Number(nodeStr))
-    }
-    return Object.entries(groups).map(([idxStr, nodeIds]) => ({
-      color: COMPONENT_COLORS[Number(idxStr) % COMPONENT_COLORS.length],
-      nodeIds,
-    }))
-  }
-
-  // ── ÉTAPE 1 : snapshot initial (aucun sommet coloré) ──────────────────────
+  // Étape 1: Présentation (label selon orientation)
+  const pathLabel = graph.directed ? 'Chemin' : 'Chaîne'
   steps.push({
-    narration: `Étape 1 — Tri par degré décroissant : ${sortedNodes.map(n => `${n}(d=${degrees[n]})`).join(', ')}`,
+    narration: `Recherche ${pathLabel.toLowerCase()} de ${source} à ${target}`,
     visited: [],
     frontier: [],
-    treeEdges: [],
-    colorGroups: [],
+    treeEdges: []
   })
 
-  // Ensemble des sommets pas encore colorés (préservé dans l'ordre trié via sortedNodes)
-  const uncolored = new Set(sortedNodes)
+  // BFS pour trouver la chaîne
+  const visited = new Set<NodeId>([source])
+  const parent: Record<NodeId, NodeId | null> = {}
+  parent[source] = null
+  const queue: NodeId[] = [source]
+  let foundTarget = false
 
-  // ── ÉTAPES 2 & 3 : COLORATION EN BOUCLE ──────────────────────────────────
-  while (uncolored.size > 0) {
+  // Étape 2: Initialisation
+  steps.push({
+    narration: `Sommet source: ${source}`,
+    visited: [source],
+    frontier: [source],
+    treeEdges: []
+  })
 
-    // 2a. Premier sommet non coloré dans la liste triée → nouvelle couleur
-    const firstNode = sortedNodes.find(n => uncolored.has(n))!
+  // BFS
+  while (queue.length > 0) {
+    const node = queue.shift()!
 
-    steps.push({
-      narration: `Étape 2 — Nouvelle couleur C${colorIndex + 1}. Premier sommet non coloré dans la liste : ${firstNode} (d=${degrees[firstNode]}).`,
-      visited: [],
-      frontier: [firstNode], // Anneau ambre = sommet examiné
-      treeEdges: [],
-      currentNode: firstNode,
-      colorGroups: buildColorGroups(),
-    })
+    if (node === target) {
+      foundTarget = true
+      break
+    }
 
-    // On colorie ce premier sommet et on le retire des non-colorés
-    nodeColors[firstNode] = colorIndex
-    uncolored.delete(firstNode)
+    // Trouver les voisins selon l'orientation du graphe
+    const neighbors = graph.directed
+      ? graph.edges
+          .filter(e => e.from === node)
+          .map(e => e.to)
+          .filter(n => !visited.has(n))
+      : graph.edges
+          .filter(e => (e.from === node || e.to === node))
+          .map(e => (e.from === node ? e.to : e.from))
+          .filter(n => !visited.has(n))
 
-    // currentGroup mémorise tous les sommets qui reçoivent la couleur courante,
-    // pour pouvoir tester l'adjacence des candidats suivants.
-    const currentGroup = [firstNode]
+    for (const neighbor of neighbors) {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor)
+        parent[neighbor] = node
+        queue.push(neighbor)
 
-    steps.push({
-      narration: `Sommet ${firstNode} → couleur C${colorIndex + 1}.`,
-      visited: [],
-      frontier: [],
-      treeEdges: [],
-      currentNode: firstNode,
-      colorGroups: buildColorGroups(),
-    })
-
-    // 2b. Parcourir le reste de la liste pour étendre ce groupe de couleur
-    for (const node of sortedNodes) {
-      if (!uncolored.has(node)) continue // Déjà coloré → on passe
-
-      // Test d'adjacence : ce sommet est-il voisin d'un membre de currentGroup ?
-      const neighbors = neighborsFor(graph, node, true).map(n => n.nodeId)
-      const isAdjacent = currentGroup.some(colored => neighbors.includes(colored))
-
-      if (isAdjacent) {
-        // Adjacent → conflit de couleur, on ne peut pas lui attribuer C(colorIndex+1)
-        steps.push({
-          narration: `Sommet ${node} (d=${degrees[node]}) est adjacent à un sommet de couleur C${colorIndex + 1} → couleur impossible.`,
-          visited: [],
-          frontier: [node], // Anneau ambre = sommet examiné mais rejeté
-          treeEdges: [],
-          currentNode: node,
-          colorGroups: buildColorGroups(),
+        // Étape : exploration du voisin (trouver l'arête correspondante)
+        const edge = graph.edges.find(e => {
+          if (graph.directed) return e.from === node && e.to === neighbor
+          return (e.from === node && e.to === neighbor) || (e.from === neighbor && e.to === node)
         })
-      } else {
-        // Non adjacent → on lui attribue la même couleur
-        nodeColors[node] = colorIndex
-        uncolored.delete(node)
-        currentGroup.push(node)
 
         steps.push({
-          narration: `Sommet ${node} (d=${degrees[node]}) n'est pas adjacent à C${colorIndex + 1} → couleur C${colorIndex + 1} attribuée.`,
-          visited: [],
-          frontier: [],
-          treeEdges: [],
-          currentNode: node,
-          colorGroups: buildColorGroups(),
+          narration: `Explorer ${node} → ${neighbor}`,
+          visited: Array.from(visited),
+          frontier: [neighbor, ...queue],
+          treeEdges: edge ? [edge.id] : [],
+          currentNode: neighbor,
+          currentEdgeId: edge?.id
         })
+
+        if (neighbor === target) {
+          foundTarget = true
+          break
+        }
       }
     }
-
-    colorIndex++ // On passe à la couleur suivante
-
-    // 3. S'il reste des sommets, on retourne à l'étape 2
-    if (uncolored.size > 0) {
-      steps.push({
-        narration: `Étape 3 — Il reste ${uncolored.size} sommet(s) non coloré(s). On retourne à l'étape 2 avec une nouvelle couleur.`,
-        visited: [],
-        frontier: [],
-        treeEdges: [],
-        colorGroups: buildColorGroups(),
-      })
-    }
   }
 
-  // ── FIN : tous les sommets ont une couleur ────────────────────────────────
+  if (!foundTarget) {
+    // Pas de chemin/chaîne trouvé(e)
+    steps.push({
+      narration: `❌ Aucun ${pathLabel.toLowerCase()} de ${source} à ${target}`,
+      visited: Array.from(visited),
+      frontier: [],
+      treeEdges: []
+    })
+    return steps
+  }
+
+  // Reconstruire la chaîne
+  const chain: NodeId[] = []
+  let curr: NodeId | null = target
+  while (curr !== null) {
+    chain.unshift(curr)
+    curr = parent[curr] || null
+  }
+
+  // Étape finale: chemin/chaîne trouvée
   steps.push({
-    narration: `Coloration de Welsh-Powell terminée — ${colorIndex} couleur(s) utilisée(s) pour ${graph.nodes.length} sommet(s).`,
+    narration: `✅ ${pathLabel} trouvé(e): ${chain.join(' → ')}`,
+    visited: chain,
+    frontier: [],
+    treeEdges: [],
+    pathEdges: graph.edges
+      .filter((e) => {
+        for (let j = 0; j < chain.length - 1; j++) {
+          if (graph.directed) {
+            if (e.from === chain[j] && e.to === chain[j + 1]) return true
+          } else {
+            if ((e.from === chain[j] && e.to === chain[j + 1]) ||
+                (e.from === chain[j + 1] && e.to === chain[j])) return true
+          }
+        }
+        return false
+      })
+      .map(e => e.id)
+  })
+
+  return steps
+}
+
+function buildEulerienProgram(graph: GraphState, source: NodeId): CinemaStep[] {
+  const steps: CinemaStep[] = []
+  const report = buildEulerianTraceReport(graph.nodes, graph.edges, graph.directed)
+  const properties = report.properties
+  const degreeSummary = graph.nodes
+    .map((nodeId) => `${nodeId}=${graph.edges.reduce((degree, edge) => degree + (edge.from === nodeId || edge.to === nodeId ? 1 : 0), 0)}`)
+    .join(', ')
+  const chainStatus = report.chainMessage
+  const cycleStatus = report.cycleMessage
+  const verdict = report.verdictMessage
+
+  steps.push({
+    narration: `Analyse eulérienne du graphe: ${graph.nodes.length} sommet(s), ${graph.edges.length} arête(s).`,
     visited: [],
     frontier: [],
     treeEdges: [],
-    colorGroups: buildColorGroups(),
+  })
+
+  steps.push({
+    narration: `Connexité: ${properties.isConnexe ? 'oui' : 'non'}. ${properties.ruleMatched}`,
+    visited: [],
+    frontier: [],
+    treeEdges: [],
+  })
+
+  steps.push({
+    narration: `Degrés: ${degreeSummary || 'aucun sommet'}. Sommets impairs: ${properties.oddNodes.length > 0 ? properties.oddNodes.join(', ') : 'aucun'}.`,
+    visited: graph.nodes,
+    frontier: properties.oddNodes,
+    treeEdges: graph.edges.map((edge) => edge.id),
+  })
+
+  steps.push({
+    narration: chainStatus,
+    visited: graph.nodes,
+    frontier: properties.oddNodes,
+    treeEdges: [],
+  })
+
+  steps.push({
+    narration: cycleStatus,
+    visited: graph.nodes,
+    frontier: [],
+    treeEdges: [],
+  })
+
+  steps.push({
+    narration: verdict,
+    visited: graph.nodes,
+    frontier: [],
+    treeEdges: [],
+  })
+
+  if (!properties.hasEulerianPathOrChain || !report.chainTrace) {
+    return steps
+  }
+
+  const startNode = properties.oddDegreeCount === 2 && properties.oddNodes.length > 0 ? properties.oddNodes[0] : source
+  const usedEdges = new Set<string>()
+
+  steps.push({
+    narration: `Départ du parcours eulérien depuis ${startNode}.`,
+    visited: [startNode],
+    frontier: [startNode],
+    treeEdges: [],
+    currentNode: startNode,
+  })
+
+  for (let index = 0; index < report.chainTrace.length - 1; index++) {
+    const from = report.chainTrace[index]
+    const to = report.chainTrace[index + 1]
+    const edge = graph.edges.find((candidate) => {
+      if (usedEdges.has(candidate.id)) {
+        return false
+      }
+      return (
+        (candidate.from === from && candidate.to === to) ||
+        (!graph.directed && candidate.from === to && candidate.to === from)
+      )
+    })
+
+    if (!edge) {
+      continue
+    }
+
+    usedEdges.add(edge.id)
+
+    steps.push({
+      narration: `Traverser ${from} → ${to}.`,
+      visited: report.chainTrace.slice(0, index + 2),
+      frontier: [to],
+      treeEdges: Array.from(usedEdges),
+      pathEdges: [edge.id],
+      currentNode: to,
+      currentEdgeId: edge.id,
+    })
+  }
+
+  steps.push({
+    narration: `${report.chainMessage} ${report.cycleMessage} ${report.verdictMessage}`,
+    visited: report.chainTrace,
+    frontier: [],
+    treeEdges: Array.from(usedEdges),
+    pathEdges: Array.from(usedEdges),
   })
 
   return steps
@@ -1234,6 +1291,80 @@ function buildEulerianPathProgram(graph: GraphState): CinemaStep[] {
   return steps
 }
 
+function buildWelshPowellProgram(graph: GraphState): CinemaStep[] {
+  const steps: CinemaStep[] = []
+  
+  // Sorting nodes by degree descending
+  const degrees = graph.nodes.map(nodeId => ({
+    nodeId,
+    degree: graph.edges.reduce((acc, edge) => acc + (edge.from === nodeId || edge.to === nodeId ? 1 : 0), 0)
+  })).sort((a, b) => b.degree - a.degree)
+
+  const colors = ['#3b82f6', '#f97316', '#22c55e', '#a855f7', '#eab308', '#06b6d4', '#ec4899', '#84cc16']
+  const nodeColors = new Map<NodeId, string>()
+  const groups: Array<{ color: string; nodeIds: NodeId[] }> = []
+
+  steps.push({
+    narration: "Démarrage de l'algorithme de Welsh-Powell pour la coloration du graphe. Tri des sommets par degré décroissant.",
+    visited: [],
+    frontier: degrees.map(d => d.nodeId),
+    treeEdges: [],
+    colorGroups: []
+  })
+
+  let currentColorIndex = 0
+  const uncoloredNodes = new Set(graph.nodes)
+
+  while (uncoloredNodes.size > 0) {
+    const color = colors[currentColorIndex % colors.length]
+    const currentGroup: NodeId[] = []
+    
+    steps.push({
+      narration: `Traitement de la couleur ${currentColorIndex + 1} (${color}).`,
+      visited: Array.from(nodeColors.keys()),
+      frontier: Array.from(uncoloredNodes),
+      treeEdges: [],
+      colorGroups: [...groups, { color, nodeIds: currentGroup }]
+    })
+
+    for (const { nodeId } of degrees) {
+      if (uncoloredNodes.has(nodeId)) {
+        // Check if any neighbor has the same color in currentGroup
+        const neighbors = neighborsFor(graph, nodeId, true)
+        const hasConflict = neighbors.some(n => currentGroup.includes(n.nodeId))
+        
+        if (!hasConflict) {
+          uncoloredNodes.delete(nodeId)
+          nodeColors.set(nodeId, color)
+          currentGroup.push(nodeId)
+          
+          steps.push({
+            narration: `Coloration du sommet ${nodeId} en ${color}. Aucun conflit avec le groupe actuel.`,
+            visited: Array.from(nodeColors.keys()),
+            frontier: Array.from(uncoloredNodes),
+            treeEdges: [],
+            currentNode: nodeId,
+            colorGroups: [...groups, { color, nodeIds: [...currentGroup] }]
+          })
+        }
+      }
+    }
+    
+    groups.push({ color, nodeIds: currentGroup })
+    currentColorIndex++
+  }
+
+  steps.push({
+    narration: `Coloration de Welsh-Powell terminée. ${groups.length} couleurs utilisées.`,
+    visited: graph.nodes,
+    frontier: [],
+    treeEdges: [],
+    colorGroups: groups
+  })
+
+  return steps
+}
+
 export function buildCinemaProgram(
   graph: GraphState,
   algorithm: CinemaAlgorithm,
@@ -1258,12 +1389,17 @@ export function buildCinemaProgram(
         return buildConnectedComponentsProgram(graph)
       case 'SpanningForest':
         return buildSpanningForestProgram(graph)
+      case 'EulerienPath':
+        return buildEulerienProgram(graph, source)
+      case 'RechercheChaine':
+        return buildSearchChainProgram(graph, source, typeof target === 'number' ? target : source)
       case 'StronglyConnectedComponents':
         return buildStronglyConnectedComponentsProgram(graph)
-      case 'EulerienPath':
-        return buildEulerianPathProgram(graph)
       case 'WelshPowell':
         return buildWelshPowellProgram(graph)
+      case 'Bellman':
+      case 'BellmanFord':
+        return buildBellmanProgram(graph, source)
       default:
         return []
     }
@@ -1280,4 +1416,106 @@ export function buildCinemaProgram(
  
 export function speedToInterval(speed: number): number {
   return Math.max(60, Math.round(900 / Math.max(0.25, speed)))
+}
+
+function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
+  const steps: CinemaStep[] = []
+
+  const distances = new Map<NodeId, number>()
+  const parent = new Map<NodeId, string>() // 🔥 IMPORTANT
+  const treeEdges: string[] = []
+
+  // Initialize
+  for (const node of graph.nodes) {
+    distances.set(node, Number.POSITIVE_INFINITY)
+  }
+  distances.set(source, 0)
+
+  const toDistanceRecord = (): Record<number, number> => {
+    const record: Record<number, number> = {}
+    for (const node of graph.nodes) {
+      const val = distances.get(node)!
+      if (val !== Number.POSITIVE_INFINITY) {
+        record[node] = val
+      }
+    }
+    return record
+  }
+
+  // 🔥 Rebuild treeEdges from parent
+  const rebuildTreeEdges = () => {
+    return Array.from(parent.values())
+  }
+
+  // Initial step
+  steps.push({
+    narration: `Initialize Bellman algorithm from source node ${source}.`,
+    visited: [],
+    frontier: [source],
+    treeEdges: [],
+    currentNode: source,
+    distances: toDistanceRecord(),
+  })
+
+  // Relax edges
+  for (let i = 0; i < graph.nodes.length - 1; i++) {
+
+    steps.push({
+      narration: `Iteration ${i + 1} over all edges.`,
+      visited: [],
+      frontier: [],
+      treeEdges: rebuildTreeEdges(),
+      distances: toDistanceRecord(),
+    })
+
+    for (const edge of graph.edges) {
+      const u = edge.from
+      const v = edge.to
+      const weight = graph.weighted ? edge.weight : 1
+
+      const du = distances.get(u)!
+      const dv = distances.get(v)!
+
+      // Inspect
+      steps.push({
+        narration: `Inspect edge ${u} → ${v} with weight ${weight}.`,
+        visited: [],
+        frontier: [],
+        treeEdges: rebuildTreeEdges(),
+        currentEdgeId: edge.id,
+        currentNode: u,
+        distances: toDistanceRecord(),
+      })
+
+      // Relaxation
+      if (du !== Infinity && du + weight < dv) {
+
+        distances.set(v, du + weight)
+
+        // 🔥 overwrite parent (IMPORTANT)
+        parent.set(v, edge.id)
+
+        steps.push({
+          narration: `Update node ${v}: ${dv === Infinity ? '∞' : dv} → ${du + weight} (better path found).`,
+          visited: [],
+          frontier: [],
+          treeEdges: rebuildTreeEdges(),
+          currentNode: v,
+          currentEdgeId: edge.id,
+          distances: toDistanceRecord(),
+        })
+      }
+    }
+  }
+
+  // Final
+  steps.push({
+    narration: `Bellman complete. Each node keeps only the best incoming edge.`,
+    visited: [],
+    frontier: [],
+    treeEdges: rebuildTreeEdges(),
+    distances: toDistanceRecord(),
+  })
+
+  return steps
 }

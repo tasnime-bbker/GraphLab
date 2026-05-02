@@ -49,14 +49,13 @@ export function AlgorithmCinemaPanel({
   onFastForward,
   onScrub,
 }: AlgorithmCinemaPanelProps) {
-  const { t } = useI18n()
-  const requiresTarget = algorithm === 'MaxFlow'
+  const requiresTarget = algorithm === 'MaxFlow' || algorithm === 'RechercheChaine'
   const disabled = stepCount === 0
 
   return (
     <div className="rounded-xl border p-3 shadow-inner" style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface)' }}>
       <div className="flex flex-wrap items-end gap-3">
-        <label className="text-xs text-slate-300">
+        <label className="text-xs" style={{color : 'var(--app-text)'}}>
           {t('cinema.algorithm')}
             <select
             className="ml-2 rounded border px-2 py-1 text-xs"
@@ -69,18 +68,19 @@ export function AlgorithmCinemaPanel({
             <option value="Dijkstra">Dijkstra</option>
             <option value="Prims">Prim&apos;s</option>
             <option value="Kruskals">Kruskal&apos;s</option>
-            <option value="MaxFlow">{t('cinema.maxFlow')}</option>
-            <option value="ConnectedComponents">{t('cinema.components')}</option>
-            <option value="SpanningForest">{t('cinema.forest')}</option>
-            <option value="StronglyConnectedComponents">{t('cinema.strongComponents')}</option>
-            <option value="Bellman">{t('cinema.bellman')}</option>
-            <option value="BellmanFord">{t('cinema.bellmanFord')}</option>
-            <option value="WelshPowell">{t('cinema.welshPowell')}</option>
-            <option value="EulerienPath">{t('cinema.euler')}</option>
+            <option value="MaxFlow">MaxFlow</option>
+            <option value="ConnectedComponents">Composantes Connexes</option>
+            <option value="SpanningForest">Forêt Couvrante</option>
+            <option value="StronglyConnectedComponents">Composantes Fortement Connexes</option>
+            <option value="Bellman">Bellman</option>
+            <option value="BellmanFord">Bellman-Ford</option>
+            <option value="WelshPowell">Welsh-Powell</option>
+            <option value="EulerienPath">Chemins / circuits eulériens</option>
+            <option value="RechercheChaine">Recherche Chaîne</option>
           </select>
         </label>
 
-        <label className="text-xs text-slate-300">
+        <label className="text-xs" style={{color : 'var(--app-text)'}}>
           {t('cinema.source')}
             <select
             className="ml-2 rounded border px-2 py-1 text-xs"
@@ -98,7 +98,7 @@ export function AlgorithmCinemaPanel({
         </label>
 
         {requiresTarget && (
-          <label className="text-xs text-slate-300">
+          <label className="text-xs" style={{color : 'var(--app-text)'}}>
             {t('cinema.target')}
             <select
               className="ml-2 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
@@ -119,7 +119,7 @@ export function AlgorithmCinemaPanel({
           {t('cinema.build')}
         </button>
 
-        <label className="text-xs text-slate-300">
+        <label className="text-xs" style={{color : 'var(--app-text)'}}>
           {t('cinema.speed')}
           <select
             className="ml-2 rounded border px-2 py-1 text-xs"
@@ -163,12 +163,12 @@ export function AlgorithmCinemaPanel({
           disabled={disabled}
         />
 
-        <span className="text-slate-400">
+        <span style={{color : 'var(--app-text)'}}>
           {t('cinema.step')} {disabled ? 0 : currentIndex + 1}/{stepCount}
         </span>
       </div>
 
-      <p className="mt-2 min-h-5 text-xs text-indigo-200/90">{narration || t('cinema.narration')}</p>
+      <p className="mt-2 min-h-5 text-xs" style={{color : 'var(--app-text)'}}>{narration || t('cinema.narration')}</p>
     </div>
   )
 }

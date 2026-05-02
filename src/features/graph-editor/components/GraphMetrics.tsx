@@ -106,8 +106,8 @@ function detectGraphTypes(
     if (gA.length > 0 && gB.length > 0) {
       const isCompleteBipartite = logicalEdgeCount === (gA.length * gB.length);
       types.push(isCompleteBipartite
-        ? { label: 'Bipartie complet', color: '#34d399' }
-        : { label: 'Bipartie', color: '#6ee7b7' }
+        ? { label: 'Biparti complet', color: '#34d399' }
+        : { label: 'Biparti', color: '#6ee7b7' }
       );
     }
   }
