@@ -1,5 +1,6 @@
 import type { NodeId } from '../../graph/model/types'
 import type { CinemaAlgorithm } from '../utils/algorithmCinema'
+import { useI18n } from '../../../shared/context/I18nContext'
 
 interface AlgorithmCinemaPanelProps {
   nodes: NodeId[]
@@ -52,12 +53,13 @@ export function AlgorithmCinemaPanel({
   const disabled = stepCount === 0
 
   return (
-    <div className="rounded-xl border border-slate-700/60 bg-slate-900/70 p-3 shadow-inner">
+    <div className="rounded-xl border p-3 shadow-inner" style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface)' }}>
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-xs text-slate-300">
-          Algorithm
-          <select
-            className="ml-2 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
+          {t('cinema.algorithm')}
+            <select
+            className="ml-2 rounded border px-2 py-1 text-xs"
+            style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface-strong)', color: 'var(--app-text)' }}
             value={algorithm}
             onChange={(event) => onAlgorithmChange(event.currentTarget.value as CinemaAlgorithm)}
           >
@@ -79,9 +81,10 @@ export function AlgorithmCinemaPanel({
         </label>
 
         <label className="text-xs text-slate-300">
-          Source
-          <select
-            className="ml-2 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
+          {t('cinema.source')}
+            <select
+            className="ml-2 rounded border px-2 py-1 text-xs"
+            style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface-strong)', color: 'var(--app-text)' }}
             value={sourceNode ?? ''}
             onChange={(event) => onSourceChange(Number(event.currentTarget.value))}
             disabled={nodes.length === 0}
@@ -96,7 +99,7 @@ export function AlgorithmCinemaPanel({
 
         {requiresTarget && (
           <label className="text-xs text-slate-300">
-            Target
+            {t('cinema.target')}
             <select
               className="ml-2 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
               value={targetNode ?? ''}
@@ -112,14 +115,15 @@ export function AlgorithmCinemaPanel({
           </label>
         )}
 
-        <button type="button" className="glass-button px-3 py-1 text-xs" onClick={onRun}>
-          Build Steps
+          <button type="button" className="glass-button px-3 py-1 text-xs" onClick={onRun}>
+          {t('cinema.build')}
         </button>
 
         <label className="text-xs text-slate-300">
-          Speed
+          {t('cinema.speed')}
           <select
-            className="ml-2 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
+            className="ml-2 rounded border px-2 py-1 text-xs"
+            style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface-strong)', color: 'var(--app-text)' }}
             value={speed}
             onChange={(event) => onSpeedChange(Number(event.currentTarget.value))}
           >
@@ -133,14 +137,14 @@ export function AlgorithmCinemaPanel({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        <button type="button" className="glass-button px-2 py-1" onClick={onRewind} disabled={disabled}>
+          <button type="button" className="glass-button px-2 py-1" onClick={onRewind} disabled={disabled}>
           {'<<'}
         </button>
         <button type="button" className="glass-button px-2 py-1" onClick={onStepBack} disabled={disabled}>
           {'<'}
         </button>
         <button type="button" className="glass-button px-2 py-1" onClick={onPlayPause} disabled={disabled}>
-          {playing ? 'Pause' : 'Play'}
+          {playing ? t('cinema.pause') : t('cinema.play')}
         </button>
         <button type="button" className="glass-button px-2 py-1" onClick={onStepForward} disabled={disabled}>
           {'>'}
@@ -160,11 +164,11 @@ export function AlgorithmCinemaPanel({
         />
 
         <span className="text-slate-400">
-          Step {disabled ? 0 : currentIndex + 1}/{stepCount}
+          {t('cinema.step')} {disabled ? 0 : currentIndex + 1}/{stepCount}
         </span>
       </div>
 
-      <p className="mt-2 min-h-5 text-xs text-indigo-200/90">{narration}</p>
+      <p className="mt-2 min-h-5 text-xs text-indigo-200/90">{narration || t('cinema.narration')}</p>
     </div>
   )
 }

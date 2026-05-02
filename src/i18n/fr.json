@@ -1,0 +1,126 @@
+{
+  "app": {
+    "title": "Graph Lab",
+    "subtitle": "Construisez et visualisez des graphes intuitivement, exportez instantanément."
+  },
+  "canvas": {
+    "title": "Éditeur visuel",
+    "helpHint": "Survolez pour obtenir de l'aide",
+    "autoLayoutRunning": "Disposition automatique en cours...",
+    "leftClick": "Clic gauche (ou N) : ajouter un nœud",
+    "delete": "Clic droit sur un nœud / double-clic sur une arête : supprimer",
+    "shortcuts": "D bascule orienté, W bascule pondéré, Ctrl+Z/Y annuler/rétablir",
+    "autoLayout": "Disposition automatique",
+    "directed": "Orienté",
+    "undirected": "Non orienté",
+    "cancelDraft": "Annuler le brouillon (Échap)",
+    "edge": "Arête"
+  },
+  "mode": {
+    "label": "Mode de saisie du graphe",
+    "visual": "Éditeur visuel",
+    "matrix": "Saisie matrice"
+  },
+  "params": {
+    "title": "Paramètres",
+    "directed": "Orienté",
+    "weighted": "Pondéré",
+    "devMode": "Mode dev",
+    "weightPolicy": "Politique des poids",
+    "darkMode": "Mode sombre",
+    "language": "Langue",
+    "autoLayout": "Disposition automatique",
+    "nodes": "Nœuds",
+    "edges": "Arêtes"
+  },
+  "policy": {
+    "positive": "Positif (> 0)",
+    "nonNegative": "Non négatif (>= 0)",
+    "any": "N'importe quel nombre"
+  },
+  "toolbar": {
+    "title": "Export",
+    "format": "Format",
+    "copy": "Copier",
+    "copied": "Copié !",
+    "copyFailed": "Echec de copie",
+    "png": "PNG",
+    "clear": "Réinitialiser"
+  },
+  "contract": {
+    "title": "Sortie GraphUI",
+    "subtitle": "Représentation JSON en direct"
+  },
+  "history": {
+    "title": "Historique",
+    "step": "Étape",
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "jump": "Aller à l'étape"
+  },
+  "metrics": {
+    "title": "Métriques du graphe",
+    "type": "Type de graphe",
+    "nodes": "Nœuds",
+    "edges": "Arêtes",
+    "density": "Densité",
+    "directed": "Orienté",
+    "undirected": "Non orienté",
+    "complete": "Complet",
+    "regular": "Régulier",
+    "bipartite": "Biparti",
+    "planar": "Planaire",
+    "empty": "Graphe vide"
+  },
+  "matrix": {
+    "title": "Matrice d'adjacence",
+    "subtitle": "Modifiez les connexions.",
+    "nodes": "Nœuds",
+    "apply": "Appliquer les modifications"
+  },
+  "query": {
+    "placeholder": "Requête : path 1 5 | neighbors 3 | degree 4 | components",
+    "run": "Lancer la requête",
+    "clear": "Effacer"
+  },
+  "cinema": {
+    "algorithm": "Algorithme",
+    "source": "Source",
+    "target": "Cible",
+    "speed": "Vitesse",
+    "build": "Générer les étapes",
+    "play": "Lecture",
+    "pause": "Pause",
+    "step": "Étape",
+    "narration": "Générez des étapes pour lancer la lecture.",
+    "maxFlow": "Flot max",
+    "components": "Composantes connexes",
+    "forest": "Forêt couvrante",
+    "strongComponents": "Composantes fortement connexes",
+    "bellman": "Bellman",
+    "bellmanFord": "Bellman-Ford",
+    "welshPowell": "Welsh-Powell",
+    "euler": "Chemins / circuits eulériens"
+  },
+  "help": {
+    "title": "Guide rapide",
+    "hint": "Survolez pour obtenir de l'aide",
+    "summary": "Raccourcis fréquents et actions rapides.",
+    "leftClick": "Clic gauche (ou N) : ajouter un nœud",
+    "delete": "Clic droit sur un nœud / double-clic sur une arête : supprimer",
+    "shortcuts": "D bascule orienté, W bascule pondéré, Ctrl+Z/Y annuler/rétablir",
+    "autoLayout": "Disposition automatique",
+    "openMatrix": "Ouvrir le mode matrice",
+    "openVisual": "Ouvrir le mode visuel",
+    "fullGuide": "Lire le guide complet"
+  },
+  "palette": {
+    "placeholder": "Tapez une commande...",
+    "noMatch": "Aucune commande ne correspond à votre recherche."
+  },
+  "lang": {
+    "en": "Anglais",
+    "fr": "Français"
+  }
+}
+

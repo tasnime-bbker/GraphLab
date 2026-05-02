@@ -19,6 +19,9 @@ export interface CinemaStep {
   augmentingEdgeIds?: string[]
   saturatedEdgeIds?: string[]
   pathEdges?: string[]
+  /** Coloration par groupe (Welsh-Powell, etc.) :
+   *  chaque entrée porte une couleur CSS et les IDs des sommets de ce groupe. */
+  colorGroups?: Array<{ color: string; nodeIds: NodeId[] }>
 }
 
 export interface CinemaProgram {
@@ -1251,7 +1254,9 @@ export function buildCinemaProgram(
       case 'RechercheChaine':
         return buildSearchChainProgram(graph, source, typeof target === 'number' ? target : source)
       case 'StronglyConnectedComponents':
-  return buildStronglyConnectedComponentsProgram(graph)
+        return buildStronglyConnectedComponentsProgram(graph)
+      case 'WelshPowell':
+        return buildWelshPowellProgram(graph)
       default:
         return []
     }

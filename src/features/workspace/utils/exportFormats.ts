@@ -108,7 +108,10 @@ export async function svgToPngBlob(svgElement: SVGSVGElement): Promise<Blob | nu
         return
       }
 
-      ctx.fillStyle = '#020617'
+      const themeBackground = getComputedStyle(document.documentElement)
+        .getPropertyValue('--app-surface-strong')
+        .trim()
+      ctx.fillStyle = themeBackground || '#020617'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
       canvas.toBlob((nextBlob) => resolve(nextBlob), 'image/png')
