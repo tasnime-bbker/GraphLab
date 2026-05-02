@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useGraphDispatch, useGraphState } from '../../graph/state/useGraphStore'
+import { useI18n } from '../../../shared/context/I18nContext'
 import { toDOT } from '../utils/exportFormats'
 
 interface Command {
@@ -13,6 +14,7 @@ interface Command {
 export function CommandPalette() {
   const dispatch = useGraphDispatch()
   const { graph } = useGraphState()
+  const { t } = useI18n()
 
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -189,21 +191,24 @@ export function CommandPalette() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/45 px-4 pt-[12vh] backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-xl border border-indigo-500/35 bg-slate-900/95 shadow-[0_0_40px_rgba(99,102,241,0.25)]">
-        <div className="border-b border-slate-700/70 p-3">
+    <div className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh] backdrop-blur-sm" style={{ backgroundColor: 'rgba(15, 23, 42, 0.35)' }}>
+      <div
+        className="w-full max-w-2xl rounded-xl border shadow-[0_0_40px_rgba(99,102,241,0.25)]"
+        style={{ backgroundColor: 'var(--app-surface-strong)', borderColor: 'var(--app-border)' }}
+      >
+        <div className="border-b p-3" style={{ borderColor: 'var(--app-border)' }}>
           <input
             autoFocus
             value={query}
             onChange={(event) => setQuery(event.currentTarget.value)}
             className="glass-input w-full px-3 py-2 text-sm"
-            placeholder="Type a command..."
+            placeholder={t('palette.placeholder')}
           />
         </div>
 
         <ul className="max-h-[360px] overflow-auto p-2">
           {filteredCommands.length === 0 && (
-            <li className="rounded-md px-3 py-2 text-sm text-slate-400">No command matches your query.</li>
+            <li className="rounded-md px-3 py-2 text-sm text-slate-400">{t('palette.noMatch')}</li>
           )}
 
           {filteredCommands.map((command, index) => {

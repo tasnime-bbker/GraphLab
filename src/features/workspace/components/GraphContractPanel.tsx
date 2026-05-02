@@ -1,43 +1,108 @@
-import { useGraphContract } from '../../graph/state/useGraphStore'
+import { Button, Code, Group, Paper, Select, Stack, Text } from '@mantine/core'
+import { useMemo, useState } from 'react'
+import { useGraphState } from '../../graph/state/useGraphStore'
+import { useI18n } from '../../../shared/context/I18nContext'
+import { formatGraphForExport, type ExportFormat, svgToPngBlob } from '../utils/exportFormats'
 
 export function GraphContractPanel() {
-  const graphUI = useGraphContract()
+  const { graph } = useGraphState()
+  const { t } = useI18n()
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('json')
+  const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle')
 
-  // Syntax highlighting helper for JSON
-  const formattedJson = JSON.stringify(graphUI, null, 2)
-    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
-      let color = 'text-indigo-400' // numbers and booleans
+  const exportText = useMemo(() => formatGraphForExport(graph, exportFormat), [exportFormat, graph])
+
+  async function copyExport() {
+    try {
+      await navigator.clipboard.writeText(exportText)
+      setCopyState('done')
+    } catch {
+      setCopyState('error')
+    }
+    window.setTimeout(() => setCopyState('idle'), 1200)
+  }
+
+  async function exportPng() {
+    const svg = document.querySelector('[data-graph-canvas="main"]') as SVGSVGElement | null
+    if (!svg) return
+    const blob = await svgToPngBlob(svg)
+    if (!blob) return
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = 'graph-lab.png'
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function escapeHtml(s: string) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  }
+
+  function highlightJson(jsonText: string) {
+    const escaped = escapeHtml(jsonText)
+    return escaped.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, function (match) {
+      let cls = 'text-indigo-500'
       if (/^"/.test(match)) {
         if (/:$/.test(match)) {
-          color = 'text-purple-300' // keys
+          cls = 'text-violet-400'
         } else {
-          color = 'text-green-300' // strings
+          cls = 'text-emerald-500'
         }
       }
-      return `<span class="${color}">${match}</span>`
+      return `<span class=\"${cls}\">${match}</span>`
     })
+  }
+
+  const previewHtml = exportFormat === 'json' ? highlightJson(exportText) : null
 
   return (
-    <aside className="glass-panel p-5 flex flex-col h-full flex-grow border-t-4 border-t-indigo-500 rounded-2xl relative overflow-hidden group">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-700"></div>
-      
-      <div className="flex items-center gap-3 mb-4">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-        </svg>
-        <div>
-          <h2 className="text-lg font-semibold text-white tracking-wide">GraphUI Output</h2>
-          <p className="text-xs text-slate-400">Live JSON payload representation</p>
-        </div>
-      </div>
-      
-      <div className="relative flex-grow">
-        <div className="absolute top-2 right-4 text-[10px] uppercase font-bold tracking-widest text-slate-500">JSON</div>
-        <pre 
-          className="h-full w-full min-h-[500px] max-h-[600px] overflow-auto rounded-xl border border-slate-700/50 bg-slate-950/80 p-4 text-[13px] leading-6 shadow-inner"
-          dangerouslySetInnerHTML={{ __html: formattedJson }}
-        />
-      </div>
-    </aside>
+    <Paper withBorder p="md" radius="md" className="flex flex-col h-full overflow-hidden">
+      <Stack gap="sm" className="flex-1">
+        <Group justify="space-between" align="center">
+          <div>
+            <Text fw={600}>{t('contract.title')}</Text>
+            <Text size="xs" c="dimmed">
+              {t('contract.subtitle')}
+            </Text>
+          </div>
+          <Group gap="xs">
+            <Button size="xs" variant="light" onClick={() => void copyExport()}>
+              {copyState === 'done' ? t('toolbar.copied') : copyState === 'error' ? t('toolbar.copyFailed') : t('toolbar.copy')}
+            </Button>
+            <Button size="xs" variant="light" onClick={() => void exportPng()}>
+              {t('toolbar.png')}
+            </Button>
+          </Group>
+        </Group>
+        <Group align="stretch" gap="xs">
+          <Select
+            w="100%"
+            size="xs"
+            label={t('toolbar.format')}
+            value={exportFormat}
+            onChange={(value) => value && setExportFormat(value as ExportFormat)}
+            data={[
+              { value: 'json', label: 'JSON' },
+              { value: 'adjacency', label: 'Adjacency List' },
+              { value: 'edgelist', label: 'Edge List' },
+              { value: 'dot', label: 'DOT' },
+              { value: 'tikz', label: 'LaTeX TikZ' },
+            ]}
+          />
+          <div style={{ flex: 1, minHeight: 500, overflow: 'auto' }}>
+            {previewHtml ? (
+              <pre
+                className="p-4 rounded-xl border"
+                style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface-strong)', color: 'var(--app-text)', maxHeight: '700px', overflow: 'scroll' }}
+                dangerouslySetInnerHTML={{ __html: previewHtml }}
+              />
+            ) : (
+              <Code block style={{ display: 'block', minHeight: 500, padding: 12 }}>{exportText}</Code>
+            )}
+          </div>
+        </Group>
+      </Stack>
+    </Paper>
   )
 }
