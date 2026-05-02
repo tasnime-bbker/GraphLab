@@ -248,21 +248,19 @@ export function calculateDegrees(nodes: NodeId[], edges: GraphEdge[]): Record<No
  * @param edges Liste des arêtes du graphe
  * @returns true si le graphe est connexe, false sinon
  */
-export function isConnected(nodes: NodeId[], edges: GraphEdge[]): boolean {
+export function isConnected(nodes: NodeId[], edges: GraphEdge[], requireAllNodes = false): boolean {
   if (nodes.length === 0) return true;
 
-  // Pour la connexité utile aux propriétés eulériennes, on considère
-  // uniquement les sommets de degré > 0. Les sommets isolés (degré 0)
-  // n'empêchent pas l'existence d'un parcours eulérien sur la composante
-  // qui contient toutes les arêtes.
   const degrees = calculateDegrees(nodes, edges);
-  const nonIsolated = nodes.filter(n => (degrees[n] || 0) > 0);
-  if (nonIsolated.length === 0) return true; // aucune arête dans le graphe
+
+  // Si requireAllNodes=false (comportement historique), on ignore les sommets isolés
+  const toCheck = requireAllNodes ? nodes : nodes.filter(n => (degrees[n] || 0) > 0);
+  if (toCheck.length === 0) return true; // aucune arête dans le graphe (ou aucun sommet à vérifier)
 
   const adj = buildAdjacencyList(nodes, edges, false);
   const visited = new Set<NodeId>();
-  const queue: NodeId[] = [nonIsolated[0]];
-  visited.add(nonIsolated[0]);
+  const queue: NodeId[] = [toCheck[0]];
+  visited.add(toCheck[0]);
 
   while (queue.length > 0) {
     const current = queue.shift()!;
@@ -274,8 +272,8 @@ export function isConnected(nodes: NodeId[], edges: GraphEdge[]): boolean {
     }
   }
 
-  // Le graphe est considéré connexe si tous les sommets non-isolés sont atteignables
-  return nonIsolated.every(n => visited.has(n));
+  // Le graphe est considéré connexe si tous les sommets à vérifier sont atteignables
+  return toCheck.every(n => visited.has(n));
 }
 
 // ============================================================================
@@ -309,45 +307,148 @@ export interface EulerianAnalysisResult {
  * @param edges Liste des arêtes du graphe
  * @returns Objet contenant les propriétés eulériennes analysées
  */
-export function analyzeEulerianProperties(nodes: NodeId[], edges: GraphEdge[]): EulerianAnalysisResult {
-  const degrees = calculateDegrees(nodes, edges);
-  
-  // Test de la connexité (Condition requise)
-  const isConnexe = isConnected(nodes, edges);
-  
-  // Comptage des sommets ayant un degré impair
-  const oddNodes = Object.entries(degrees)
-    .filter(([_, deg]) => (deg as number) % 2 !== 0)
-    .map(([node, _]) => Number(node));
-    
-  const oddDegreeCount = oddNodes.length;
-  
+export function analyzeEulerianProperties(
+  nodes: NodeId[],
+  edges: GraphEdge[],
+  directed: boolean = edges.some(e => e.directed === true),
+): EulerianAnalysisResult {
+
+  // Pour l'analyse eulérienne, exiger la connexité sur tous les sommets
+  let isConnexe = isConnected(nodes, edges, true);
+  let oddNodes: NodeId[] = [];
+  let oddDegreeCount = 0;
   let isEulerianGraph = false;
   let hasEulerianPathOrChain = false;
   let ruleMatched = '';
 
-  if (!isConnexe) {
-    ruleMatched = "Non connexe = non eulérien";
-  } else if (oddDegreeCount === 0) {
-    isEulerianGraph = true;
-    hasEulerianPathOrChain = true; 
-    ruleMatched = "Connexe + 0 sommets impairs = graphe eulérien";
-  } else if (oddDegreeCount === 2) {
-    hasEulerianPathOrChain = true;
-    ruleMatched = "Connexe + 2 sommets impairs = chemin eulérien";
+  if (!directed) {
+    // Cas non orienté (déjà implémenté)
+    const degrees = calculateDegrees(nodes, edges);
+    oddNodes = Object.entries(degrees)
+      .filter(([_, deg]) => (deg as number) % 2 !== 0)
+      .map(([node, _]) => Number(node));
+    oddDegreeCount = oddNodes.length;
+
+    if (!isConnexe) {
+      ruleMatched = "Non connexe = non eulérien";
+    } else if (oddDegreeCount === 0) {
+      isEulerianGraph = true;
+      hasEulerianPathOrChain = true;
+      ruleMatched = "Connexe + 0 sommets impairs = graphe eulérien";
+    } else if (oddDegreeCount === 2) {
+      hasEulerianPathOrChain = true;
+      ruleMatched = "Connexe + 2 sommets impairs = chemin eulérien";
+    } else {
+      ruleMatched = "Plus de 2 impairs = non eulérien";
+    }
   } else {
-    ruleMatched = "Plus de 2 impairs = non eulérien";
+    // Graphe orienté : règles différentes
+    // Calculer degrés entrants/sortants
+    const inDegrees: Record<NodeId, number> = {};
+    const outDegrees: Record<NodeId, number> = {};
+    nodes.forEach(n => { inDegrees[n] = 0; outDegrees[n] = 0; });
+    edges.forEach(e => {
+      outDegrees[e.from] = (outDegrees[e.from] || 0) + 1;
+      inDegrees[e.to] = (inDegrees[e.to] || 0) + 1;
+    });
+
+    // Comptage des sommets où in != out
+    const diffNodes = Object.keys(nodes.reduce((acc: Record<string, number>, n) => { acc[n as any] = 0; return acc; }, {})).map(Number).filter(n => (inDegrees[n] || 0) !== (outDegrees[n] || 0));
+    oddNodes = diffNodes as NodeId[];
+    oddDegreeCount = oddNodes.length;
+
+    // Pour un circuit eulérien orienté : chaque sommet a in == out et tous les sommets
+    // avec degré non nul font partie d'une même composante fortement connexe.
+    // Pour un chemin eulérien orienté : au maximum un sommet a out-in = 1 (start),
+    // un sommet a in-out = 1 (end), les autres ont in == out, et le graphe est faiblement connexe.
+
+    // Vérifier la connexité faible (déjà faite via isConnected)
+    const weaklyConnected = isConnexe;
+
+    // Vérifier la connexité forte sur les sommets non isolés
+    function isStronglyConnectedDirected(): boolean {
+      // Kosaraju simplifié
+      const degrees = nodes.reduce((acc: Record<NodeId, number>, n) => { acc[n] = 0; return acc; }, {} as Record<NodeId, number>);
+      edges.forEach(e => { degrees[e.from]++; degrees[e.to]++; });
+      const nonIsolated = nodes.filter(n => (degrees[n] || 0) > 0);
+      if (nonIsolated.length === 0) return true;
+
+      const adj = new Map<NodeId, NodeId[]>();
+      const rev = new Map<NodeId, NodeId[]>();
+      nodes.forEach(n => { adj.set(n, []); rev.set(n, []); });
+      edges.forEach(e => {
+        if (!adj.has(e.from)) adj.set(e.from, []);
+        if (!adj.has(e.to)) adj.set(e.to, []);
+        adj.get(e.from)!.push(e.to);
+        rev.get(e.to)!.push(e.from);
+      });
+
+      const start = nonIsolated[0];
+      const visited1 = new Set<NodeId>();
+      const stack: NodeId[] = [start];
+      visited1.add(start);
+      while (stack.length) {
+        const u = stack.pop()!;
+        for (const v of (adj.get(u) || [])) {
+          if (!visited1.has(v)) { visited1.add(v); stack.push(v); }
+        }
+      }
+      if (nonIsolated.some(n => !visited1.has(n))) return false;
+
+      const visited2 = new Set<NodeId>();
+      const stack2: NodeId[] = [start];
+      visited2.add(start);
+      while (stack2.length) {
+        const u = stack2.pop()!;
+        for (const v of (rev.get(u) || [])) {
+          if (!visited2.has(v)) { visited2.add(v); stack2.push(v); }
+        }
+      }
+      if (nonIsolated.some(n => !visited2.has(n))) return false;
+
+      return true;
+    }
+
+    const stronglyConnected = isStronglyConnectedDirected();
+
+    // Conditions
+    const allEqual = nodes.every(n => (inDegrees[n] || 0) === (outDegrees[n] || 0));
+
+    if (!weaklyConnected) {
+      ruleMatched = 'Non faiblement connexe = pas d\'eulérien orienté';
+    } else if (allEqual && stronglyConnected) {
+      isEulerianGraph = true;
+      hasEulerianPathOrChain = true;
+      ruleMatched = 'Connexe forte + in==out pour tous = circuit eulérien orienté';
+    } else {
+      // vérifier condition de chemin eulérien orienté
+      let startCount = 0;
+      let endCount = 0;
+      for (const n of nodes) {
+        const diff = (outDegrees[n] || 0) - (inDegrees[n] || 0);
+        if (diff === 1) startCount++;
+        else if (diff === -1) endCount++;
+        else if (diff !== 0) {
+          startCount = 99; // invalide
+          break;
+        }
+      }
+      if (startCount === 1 && endCount === 1 && weaklyConnected) {
+        hasEulerianPathOrChain = true;
+        ruleMatched = 'Faiblement connexe + exactement un start(out-in=1) et un end(in-out=1) = chemin eulérien orienté';
+      } else {
+        ruleMatched = 'Conditions orientées non satisfaites = non eulérien orienté';
+      }
+    }
   }
-  
+
   return {
     isConnexe,
     oddDegreeCount,
     oddNodes,
     isEulerianGraph,
-    // Dans ce contexte métier strict, si c'est un graphe eulérien, c'est aussi un circuit/cycle
-    hasEulerianCircuitOrCycle: isEulerianGraph, 
-    // Chemin s'il correspond aux mêmes règles
-    hasEulerianPathOrChain,                     
+    hasEulerianCircuitOrCycle: isEulerianGraph,
+    hasEulerianPathOrChain,
     ruleMatched
   };
 }
@@ -464,8 +565,12 @@ export function findUndirectedCycle(nodes: NodeId[], edges: GraphEdge[]): NodeId
  * @param edges Liste des arêtes du graphe
  * @returns La liste séquentielle des sommets parcourus, ou null s'il n'y a pas de parcours eulérien
  */
-export function findEulerianPathOrCircuit(nodes: NodeId[], edges: GraphEdge[]): NodeId[] | null {
-  const properties = analyzeEulerianProperties(nodes, edges);
+export function findEulerianPathOrCircuit(
+  nodes: NodeId[],
+  edges: GraphEdge[],
+  directed: boolean = edges.some(e => e.directed === true),
+): NodeId[] | null {
+  const properties = analyzeEulerianProperties(nodes, edges, directed);
   
   if (!properties.hasEulerianPathOrChain) {
     return null; // Pas de chemin ni de circuit eulérien possible
@@ -474,24 +579,46 @@ export function findEulerianPathOrCircuit(nodes: NodeId[], edges: GraphEdge[]): 
   // correctement les multigraphes et pouvoir consommer chaque arête.
   const adj = new Map<NodeId, { to: NodeId; id: string }[]>();
   nodes.forEach(n => adj.set(n, []));
-  const seenEdges = new Set<string>();
-  edges.forEach(e => {
-    const edgeKey = e.symmetryKey ?? `${Math.min(e.from, e.to)}:${Math.max(e.from, e.to)}:${e.weight}`;
-    if (e.directed === false && seenEdges.has(edgeKey)) {
-      return;
-    }
-    seenEdges.add(edgeKey);
 
-    if (!adj.has(e.from)) adj.set(e.from, []);
-    if (!adj.has(e.to)) adj.set(e.to, []);
-    adj.get(e.from)!.push({ to: e.to, id: e.id });
-    adj.get(e.to)!.push({ to: e.from, id: e.id });
-  });
+  if (!directed) {
+    const seenEdges = new Set<string>();
+    edges.forEach(e => {
+      const edgeKey = e.symmetryKey ?? `${Math.min(e.from, e.to)}:${Math.max(e.from, e.to)}:${e.weight}`;
+      if (seenEdges.has(edgeKey)) return;
+      seenEdges.add(edgeKey);
 
-  // Choix du point de départ : un noeud de degré impair s'il y en a, sinon n'importe lequel
+      if (!adj.has(e.from)) adj.set(e.from, []);
+      if (!adj.has(e.to)) adj.set(e.to, []);
+      adj.get(e.from)!.push({ to: e.to, id: e.id });
+      adj.get(e.to)!.push({ to: e.from, id: e.id });
+    });
+  } else {
+    // orienté : ne pas ajouter l'arête inverse
+    edges.forEach(e => {
+      if (!adj.has(e.from)) adj.set(e.from, []);
+      if (!adj.has(e.to)) adj.set(e.to, []);
+      adj.get(e.from)!.push({ to: e.to, id: e.id });
+    });
+  }
+
+  // Choix du point de départ
   let startNode = nodes[0];
-  if (properties.oddDegreeCount === 2 && properties.oddNodes.length > 0) {
-    startNode = properties.oddNodes[0];
+  if (!directed) {
+    if (properties.oddDegreeCount === 2 && properties.oddNodes.length > 0) {
+      startNode = properties.oddNodes[0];
+    }
+  } else {
+    // pour orienté, préférer le sommet avec out-in == 1 s'il existe
+    const inDeg: Record<NodeId, number> = {};
+    const outDeg: Record<NodeId, number> = {};
+    nodes.forEach(n => { inDeg[n] = 0; outDeg[n] = 0; });
+    edges.forEach(e => { outDeg[e.from] = (outDeg[e.from] || 0) + 1; inDeg[e.to] = (inDeg[e.to] || 0) + 1; });
+    const startCandidates = nodes.filter(n => (outDeg[n] || 0) - (inDeg[n] || 0) === 1);
+    if (startCandidates.length > 0) startNode = startCandidates[0];
+    else {
+      const anyWithOut = nodes.find(n => (outDeg[n] || 0) > 0);
+      if (anyWithOut) startNode = anyWithOut;
+    }
   }
 
   const stack: NodeId[] = [startNode];
@@ -503,11 +630,12 @@ export function findEulerianPathOrCircuit(nodes: NodeId[], edges: GraphEdge[]): 
 
     if (neighbors.length > 0) {
       const nextEdge = neighbors.pop()!;
-      // Retirer l'arête inverse correspondant (même id) dans la liste du voisin
-      const revList = adj.get(nextEdge.to)!;
-      const revIndex = revList.findIndex(x => x.id === nextEdge.id && x.to === current);
-      if (revIndex !== -1) revList.splice(revIndex, 1);
-
+      if (!directed) {
+        // Retirer l'arête inverse correspondant (même id) dans la liste du voisin
+        const revList = adj.get(nextEdge.to)!;
+        const revIndex = revList.findIndex(x => x.id === nextEdge.id && x.to === current);
+        if (revIndex !== -1) revList.splice(revIndex, 1);
+      }
       stack.push(nextEdge.to);
     } else {
       parcours.push(stack.pop()!);
@@ -534,19 +662,28 @@ export interface EulerianTraceReport {
  * - le cycle eulérien et sa trace si elle existe
  * - le verdict final sur le graphe eulérien
  */
-export function buildEulerianTraceReport(nodes: NodeId[], edges: GraphEdge[]): EulerianTraceReport {
-  const properties = analyzeEulerianProperties(nodes, edges);
-  const eulerianTrace = properties.hasEulerianPathOrChain ? findEulerianPathOrCircuit(nodes, edges) : null;
-  const chainTrace = eulerianTrace && !properties.isEulerianGraph ? eulerianTrace : eulerianTrace;
+export function buildEulerianTraceReport(
+  nodes: NodeId[],
+  edges: GraphEdge[],
+  directed: boolean = edges.some(e => e.directed === true),
+): EulerianTraceReport {
+  const properties = analyzeEulerianProperties(nodes, edges, directed);
+  const eulerianTrace = properties.hasEulerianPathOrChain ? findEulerianPathOrCircuit(nodes, edges, directed) : null;
+  const chainTrace = eulerianTrace;
   const cycleTrace = properties.isEulerianGraph ? eulerianTrace : null;
+  // Libellés selon orientation
+  const pathLabel = directed ? 'Chemin' : 'Chaîne';
+  const pathLabelLower = directed ? 'chemin' : 'chaîne';
+  const circuitLabel = directed ? 'Circuit' : 'Cycle';
+  const circuitLabelLower = directed ? 'circuit' : 'cycle';
 
   const chainMessage = properties.hasEulerianPathOrChain
-    ? `Chaîne eulérienne: oui. Trace de la chaîne: ${chainTrace ? chainTrace.join(' → ') : 'trace indisponible'}.`
-    : 'Chaîne eulérienne: non.';
+    ? `${pathLabel} eulérien: oui. Trace du ${pathLabelLower}: ${chainTrace ? chainTrace.join(' → ') : 'trace indisponible'}.`
+    : `${pathLabel} eulérien: non.`;
 
   const cycleMessage = properties.isEulerianGraph
-    ? `Cycle eulérien: oui. Trace du cycle: ${cycleTrace ? cycleTrace.join(' → ') : 'trace indisponible'}.`
-    : 'Cycle eulérien: non. Aucun cycle eulérien n\'existe dans ce graphe.';
+    ? `${circuitLabel} eulérien: oui. Trace du ${circuitLabelLower}: ${cycleTrace ? cycleTrace.join(' → ') : 'trace indisponible'}.`
+    : `${circuitLabel} eulérien: non. Aucun ${circuitLabelLower} eulérien n'existe dans ce graphe.`;
 
   const verdictMessage = properties.isEulerianGraph
     ? 'Graphe eulérien: oui.'
@@ -622,7 +759,8 @@ export function checkRegularGraph(nodes: NodeId[], edges: GraphEdge[]): RegularG
 export function isEulerian(nodes: NodeId[], edges: GraphEdge[]): boolean {
   if (nodes.length === 0 || edges.length === 0) return false;
 
-  if (!isConnected(nodes, edges)) return false;
+  // Exiger la connexité complète pour décider si le graphe est eulérien
+  if (!isConnected(nodes, edges, true)) return false;
 
   const degrees = calculateDegrees(nodes, edges);
   const hasOddDegree = Object.values(degrees).some(deg => (deg as number) % 2 !== 0);

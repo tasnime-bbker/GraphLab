@@ -997,9 +997,10 @@ function buildStronglyConnectedComponentsProgram(graph: GraphState): CinemaStep[
 function buildSearchChainProgram(graph: GraphState, source: NodeId, target: NodeId): CinemaStep[] {
   const steps: CinemaStep[] = []
 
-  // Étape 1: Présentation
+  // Étape 1: Présentation (label selon orientation)
+  const pathLabel = graph.directed ? 'Chemin' : 'Chaîne'
   steps.push({
-    narration: `Recherche chaîne de ${source} à ${target}`,
+    narration: `Recherche ${pathLabel.toLowerCase()} de ${source} à ${target}`,
     visited: [],
     frontier: [],
     treeEdges: []
@@ -1029,11 +1030,16 @@ function buildSearchChainProgram(graph: GraphState, source: NodeId, target: Node
       break
     }
 
-    // Trouver les voisins (non orienté)
-    const neighbors = graph.edges
-      .filter(e => (e.from === node || e.to === node))
-      .map(e => (e.from === node ? e.to : e.from))
-      .filter(n => !visited.has(n))
+    // Trouver les voisins selon l'orientation du graphe
+    const neighbors = graph.directed
+      ? graph.edges
+          .filter(e => e.from === node)
+          .map(e => e.to)
+          .filter(n => !visited.has(n))
+      : graph.edges
+          .filter(e => (e.from === node || e.to === node))
+          .map(e => (e.from === node ? e.to : e.from))
+          .filter(n => !visited.has(n))
 
     for (const neighbor of neighbors) {
       if (!visited.has(neighbor)) {
@@ -1041,10 +1047,11 @@ function buildSearchChainProgram(graph: GraphState, source: NodeId, target: Node
         parent[neighbor] = node
         queue.push(neighbor)
 
-        // Étape : exploration du voisin
-        const edge = graph.edges.find(
-          e => (e.from === node && e.to === neighbor) || (e.from === neighbor && e.to === node)
-        )
+        // Étape : exploration du voisin (trouver l'arête correspondante)
+        const edge = graph.edges.find(e => {
+          if (graph.directed) return e.from === node && e.to === neighbor
+          return (e.from === node && e.to === neighbor) || (e.from === neighbor && e.to === node)
+        })
 
         steps.push({
           narration: `Explorer ${node} → ${neighbor}`,
@@ -1064,9 +1071,9 @@ function buildSearchChainProgram(graph: GraphState, source: NodeId, target: Node
   }
 
   if (!foundTarget) {
-    // Pas de chaîne trouvée
+    // Pas de chemin/chaîne trouvé(e)
     steps.push({
-      narration: `❌ Aucune chaîne de ${source} à ${target}`,
+      narration: `❌ Aucun ${pathLabel.toLowerCase()} de ${source} à ${target}`,
       visited: Array.from(visited),
       frontier: [],
       treeEdges: []
@@ -1082,18 +1089,20 @@ function buildSearchChainProgram(graph: GraphState, source: NodeId, target: Node
     curr = parent[curr] || null
   }
 
-  // Étape finale: chaîne trouvée
+  // Étape finale: chemin/chaîne trouvée
   steps.push({
-    narration: `✅ Chaîne trouvée: ${chain.join(' → ')}`,
+    narration: `✅ ${pathLabel} trouvé(e): ${chain.join(' → ')}`,
     visited: chain,
     frontier: [],
     treeEdges: [],
     pathEdges: graph.edges
       .filter((e) => {
         for (let j = 0; j < chain.length - 1; j++) {
-          if ((e.from === chain[j] && e.to === chain[j + 1]) ||
-              (e.from === chain[j + 1] && e.to === chain[j])) {
-            return true
+          if (graph.directed) {
+            if (e.from === chain[j] && e.to === chain[j + 1]) return true
+          } else {
+            if ((e.from === chain[j] && e.to === chain[j + 1]) ||
+                (e.from === chain[j + 1] && e.to === chain[j])) return true
           }
         }
         return false
@@ -1106,7 +1115,7 @@ function buildSearchChainProgram(graph: GraphState, source: NodeId, target: Node
 
 function buildEulerienProgram(graph: GraphState, source: NodeId): CinemaStep[] {
   const steps: CinemaStep[] = []
-  const report = buildEulerianTraceReport(graph.nodes, graph.edges)
+  const report = buildEulerianTraceReport(graph.nodes, graph.edges, graph.directed)
   const properties = report.properties
   const degreeSummary = graph.nodes
     .map((nodeId) => `${nodeId}=${graph.edges.reduce((degree, edge) => degree + (edge.from === nodeId || edge.to === nodeId ? 1 : 0), 0)}`)
