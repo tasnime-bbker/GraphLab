@@ -49,8 +49,7 @@ export function AlgorithmCinemaPanel({
   onFastForward,
   onScrub,
 }: AlgorithmCinemaPanelProps) {
-  const { t } = useI18n()
-  const requiresTarget = algorithm === 'MaxFlow'
+  const requiresTarget = algorithm === 'MaxFlow' || algorithm === 'RechercheChaine'
   const disabled = stepCount === 0
 
   return (
@@ -69,14 +68,15 @@ export function AlgorithmCinemaPanel({
             <option value="Dijkstra">Dijkstra</option>
             <option value="Prims">Prim&apos;s</option>
             <option value="Kruskals">Kruskal&apos;s</option>
-            <option value="MaxFlow">{t('cinema.maxFlow')}</option>
-            <option value="ConnectedComponents">{t('cinema.components')}</option>
-            <option value="SpanningForest">{t('cinema.forest')}</option>
-            <option value="StronglyConnectedComponents">{t('cinema.strongComponents')}</option>
-            <option value="Bellman">{t('cinema.bellman')}</option>
-            <option value="BellmanFord">{t('cinema.bellmanFord')}</option>
-            <option value="WelshPowell">{t('cinema.welshPowell')}</option>
-            <option value="EulerienPath">{t('cinema.euler')}</option>
+            <option value="MaxFlow">MaxFlow</option>
+            <option value="ConnectedComponents">Composantes Connexes</option>
+            <option value="SpanningForest">Forêt Couvrante</option>
+            <option value="StronglyConnectedComponents">Composantes Fortement Connexes</option>
+            <option value="Bellman">Bellman</option>
+            <option value="BellmanFord">Bellman-Ford</option>
+            <option value="WelshPowell">Welsh-Powell</option>
+            <option value="EulerienPath">Chemins / circuits eulériens</option>
+            <option value="RechercheChaine">Recherche Chaîne</option>
           </select>
         </label>
 
