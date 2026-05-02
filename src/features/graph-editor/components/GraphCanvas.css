@@ -7,6 +7,53 @@
   animation: pan-grid 2s linear infinite;
 }
 
+/* ── Base surface breath — very subtle color shift ── */
+@keyframes surface-breath {
+  0%   { background-color: #010d1f; }
+  25%  { background-color: #020e22; }
+  50%  { background-color: #031525; }
+  75%  { background-color: #020e22; }
+  100% { background-color: #010d1f; }
+}
+
+/* ── Primary orb: slow lissajous figure-8 path ── */
+@keyframes orb-primary {
+  0%   { transform: translate(-50%, -50%) translate(0%,    0%)    scale(1.00); opacity: 0.14; }
+  12%  { transform: translate(-50%, -50%) translate(8%,   -6%)    scale(1.04); opacity: 0.17; }
+  25%  { transform: translate(-50%, -50%) translate(12%,   2%)    scale(1.08); opacity: 0.20; }
+  37%  { transform: translate(-50%, -50%) translate(6%,   10%)    scale(1.05); opacity: 0.17; }
+  50%  { transform: translate(-50%, -50%) translate(-2%,   8%)    scale(1.02); opacity: 0.14; }
+  62%  { transform: translate(-50%, -50%) translate(-10%,  2%)    scale(1.05); opacity: 0.17; }
+  75%  { transform: translate(-50%, -50%) translate(-12%, -5%)    scale(1.08); opacity: 0.20; }
+  87%  { transform: translate(-50%, -50%) translate(-5%,  -8%)    scale(1.04); opacity: 0.17; }
+  100% { transform: translate(-50%, -50%) translate(0%,    0%)    scale(1.00); opacity: 0.14; }
+}
+
+/* ── Secondary orb: offset phase for depth ── */
+@keyframes orb-secondary {
+  0%   { transform: translate(-50%, -50%) translate(5%,    8%)    scale(1.05); opacity: 0.08; }
+  20%  { transform: translate(-50%, -50%) translate(-8%,   3%)    scale(1.10); opacity: 0.12; }
+  40%  { transform: translate(-50%, -50%) translate(-10%, -7%)    scale(1.07); opacity: 0.09; }
+  60%  { transform: translate(-50%, -50%) translate(2%,  -10%)    scale(1.04); opacity: 0.12; }
+  80%  { transform: translate(-50%, -50%) translate(10%,  -2%)    scale(1.08); opacity: 0.09; }
+  100% { transform: translate(-50%, -50%) translate(5%,    8%)    scale(1.05); opacity: 0.08; }
+}
+
+/* ── Dot grid continuous diagonal pan — seamless loop ── */
+@keyframes grid-pan {
+  0%   { transform: translate(0px,  0px);  }
+  100% { transform: translate(40px, 40px); }
+}
+
+/* ── Light mode orb drift ── */
+@keyframes orb-light {
+  0%   { transform: translate(-50%, -50%) translate(0%,   0%)   scale(1.00); opacity: 0.04; }
+  25%  { transform: translate(-50%, -50%) translate(8%,  -5%)   scale(1.06); opacity: 0.07; }
+  50%  { transform: translate(-50%, -50%) translate(0%,   8%)   scale(1.03); opacity: 0.05; }
+  75%  { transform: translate(-50%, -50%) translate(-8%, -3%)   scale(1.06); opacity: 0.07; }
+  100% { transform: translate(-50%, -50%) translate(0%,   0%)   scale(1.00); opacity: 0.04; }
+}
+
 @keyframes flash-green {
   0% { opacity: 0.95; }
   100% { opacity: 0; }
@@ -150,5 +197,111 @@
 
 .cluster-region {
   transition: x 220ms ease, y 220ms ease, width 220ms ease, height 220ms ease;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(14, 165, 233, 0.4)); }
+  50%       { filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.8)); }
+}
+
+.selected-glow {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ── Canvas root container ── */
+.canvas-container {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  isolation: isolate;
+}
+
+[data-mantine-color-scheme='dark'] .canvas-container {
+  background-color: #010d1f;
+  animation: surface-breath 16s ease-in-out infinite;
+}
+
+[data-mantine-color-scheme='light'] .canvas-container {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  animation: none;
+}
+
+/* ── PRIMARY glow orb ── */
+.canvas-bg-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 170%;
+  height: 170%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  will-change: transform, opacity;
+}
+
+[data-mantine-color-scheme='dark'] .canvas-bg-glow {
+  background: radial-gradient(
+    circle at center,
+    rgba(14, 165, 233, 0.22) 0%,
+    rgba(6,  182, 212, 0.10) 35%,
+    rgba(2,  132, 199, 0.05) 55%,
+    transparent 70%
+  );
+  filter: blur(72px);
+  animation: orb-primary 28s ease-in-out infinite;
+}
+
+[data-mantine-color-scheme='light'] .canvas-bg-glow {
+  background: radial-gradient(
+    circle at center,
+    rgba(0, 120, 215, 0.10) 0%,
+    rgba(0,  80, 200, 0.04) 45%,
+    transparent 70%
+  );
+  filter: blur(60px);
+  animation: orb-light 24s ease-in-out infinite;
+}
+
+/* ── SECONDARY glow orb (depth layer) ── */
+.canvas-bg-glow-2 {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 130%;
+  height: 130%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  will-change: transform, opacity;
+}
+
+[data-mantine-color-scheme='dark'] .canvas-bg-glow-2 {
+  background: radial-gradient(
+    circle at center,
+    rgba(56, 189, 248, 0.12) 0%,
+    rgba(14, 165, 233, 0.06) 40%,
+    transparent 65%
+  );
+  filter: blur(90px);
+  animation: orb-secondary 38s ease-in-out infinite;
+}
+
+[data-mantine-color-scheme='light'] .canvas-bg-glow-2 {
+  display: none;
+}
+
+/* ── SVG canvas above glow layers ── */
+.canvas-svg {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Light mode dot grid override ── */
+[data-mantine-color-scheme='light'] #dot-grid circle {
+  fill: #0078d7;
+  fill-opacity: 0.08;
 }
 

@@ -203,11 +203,11 @@ function EdgeItem({
       <path
         ref={pathRef}
         d={geometry.path}
-        className={`edge-path pointer-events-none transition-all duration-300 ${isSelected ? 'stroke-blue-400' : 'stroke-blue-500/50'}`}
+        className={`edge-path pointer-events-none transition-all duration-300 ${isSelected ? 'selected-glow' : ''}`}
+        stroke={isSelected ? '#38bdf8' : 'rgba(14, 165, 233, 0.4)'}
         strokeWidth={isSelected ? 3.5 : 2}
         fill="none"
         strokeLinecap="round"
-        filter={isSelected ? "url(#glow-selected)" : ""}
         markerEnd={directed ? (isSelected ? 'url(#arrow-selected)' : 'url(#arrow)') : undefined}
       />
       
@@ -245,8 +245,8 @@ function EdgeItem({
             width={24}
             height={20}
             rx={4}
-            fill="var(--app-surface-strong)"
-            stroke={isSelected ? "var(--app-accent)" : "var(--app-border)"}
+            fill="#0ea5e9"
+            stroke={isSelected ? "#38bdf8" : "rgba(255,255,255,0.1)"}
             strokeWidth={1.5}
             className="transition-all duration-300"
           />
@@ -285,7 +285,7 @@ function EdgeItem({
               y={geometry.labelY + 4}
               textAnchor="middle"
               className="pointer-events-none font-mono text-[11px] font-bold"
-              style={{ fill: 'var(--app-text)' }}
+              style={{ fill: '#ffffff' }}
             >
               {edge.weight}
             </text>
@@ -1154,11 +1154,13 @@ export function GraphCanvas() {
         )}
       </div>
 
-      <div className="flex-grow relative overflow-hidden" style={{ backgroundColor: 'var(--app-surface-strong)' }}>
+      <div className="canvas-container w-full h-full">
+        <div className="canvas-bg-glow" />
+        <div className="canvas-bg-glow-2" />
         <svg
           ref={svgRef}
           data-graph-canvas="main"
-          className="w-full h-full cursor-crosshair min-h-[520px]"
+          className="canvas-svg cursor-crosshair min-h-[520px]"
           viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
           preserveAspectRatio="xMidYMid meet"
           onDoubleClick={() => applyZoomTransform({ x: 0, y: 0, k: 1 })}
@@ -1175,8 +1177,13 @@ export function GraphCanvas() {
           }}
         >
           <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <circle cx="2" cy="2" r="1" fill="var(--app-accent)" opacity="0.15" />
+            <pattern
+              id="dot-grid"
+              width="40"
+              height="40"
+              patternUnits="userSpaceOnUse"
+            >
+              <circle cx="2" cy="2" r="1" fill="#38bdf8" fillOpacity="0.12" />
             </pattern>
             <marker
               id="arrow"
@@ -1201,14 +1208,25 @@ export function GraphCanvas() {
             
           </defs>
 
+          <g style={{ animation: 'grid-pan 18s linear infinite' }}>
+            <rect
+              x="-40"
+              y="-40"
+              width="calc(100% + 80px)"
+              height="calc(100% + 80px)"
+              fill="url(#dot-grid)"
+              style={{ pointerEvents: 'none' }}
+            />
+          </g>
+
           <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
+            {/* Clickable Overlay for creating nodes (Static, so clicking works properly) */}
             <rect
               x={-50000}
               y={-50000}
               width={100000}
               height={100000}
-              fill="url(#grid)"
-              className="animate-grid-pan"
+              fill="transparent"
               onClick={(event) => {
                 if (event.button !== 0 || svgRef.current === null) {
                   return
@@ -1623,10 +1641,10 @@ export function GraphCanvas() {
                   r={NODE_RADIUS}
                   fill={isSelected || isDraftStart ? "var(--app-accent)" : "var(--app-surface-strong)"}
                   fillOpacity={isSelected || isDraftStart ? 0.25 : 1}
-                  stroke={isSelected || isDraftStart ? "var(--app-accent)" : "var(--app-accent)"}
+                  stroke="var(--app-accent)"
                   strokeOpacity={isSelected || isDraftStart ? 1 : 0.35}
                   strokeWidth={isSelected || isDraftStart ? 3.5 : 2.2}
-                  className="cursor-pointer transition-all hover:stroke-opacity-100 hover:filter hover:drop-shadow-[0_0_8px_rgba(0,120,215,0.4)]"
+                  className={`cursor-pointer transition-all hover:stroke-opacity-100 ${isSelected ? 'selected-glow' : ''}`}
                   style={{ 
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' 
                   }}
