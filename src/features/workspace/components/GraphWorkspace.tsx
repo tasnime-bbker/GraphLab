@@ -8,6 +8,7 @@ import { GraphContractPanel } from './GraphContractPanel'
 import { GraphHistoryTimeline } from './GraphHistoryTimeline'
 import { ModeSwitch } from './ModeSwitch'
 import { TopRightParameters } from './TopRightParameters'
+import { TeamFooter } from './TeamFooter'
 
 export function GraphWorkspace() {
   const { mode, isDevMode } = useGraphState()
@@ -58,6 +59,7 @@ export function GraphWorkspace() {
       </Container>
       <TopRightParameters />
       <CommandPalette />
+      <TeamFooter />
     </main>
   )
 }
