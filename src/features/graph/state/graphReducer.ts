@@ -19,6 +19,9 @@ export type GraphAction =
   | { type: 'DELETE_NODE'; payload: { nodeId: NodeId } }
   | { type: 'DELETE_EDGE'; payload: { edgeId: string } }
   | { type: 'SET_EDGE_WEIGHT'; payload: { edgeId: string; weight: number } }
+  // On ajoute une nouvelle action pour modifier le flow d'une arête
+  // "edgeId" = quelle arête, "flow" = la nouvelle valeur du flow
+  | { type: 'SET_EDGE_FLOW'; payload: { edgeId: string; flow: number } } // ajouter pour Algo  MaxFlow
   | { type: 'SET_SELECTED_NODE'; payload: { nodeId: NodeId | null } }
   | { type: 'SET_SELECTED_EDGE'; payload: { edgeId: string | null } }
   | { type: 'RESIZE_NODE_COUNT'; payload: { count: number } }
@@ -468,7 +471,20 @@ export function graphReducer(
         },
       }
     }
-
+          //pour le cas de l algo de  MaxFlow 
+      case 'SET_EDGE_FLOW': {
+      return {
+        ...state,
+        graph: {
+          ...state.graph,
+          edges: state.graph.edges.map((edge) =>
+            edge.id === action.payload.edgeId
+              ? { ...edge, flow: action.payload.flow }
+              : edge,
+          ),
+        },
+      }
+    }
     case 'SET_SELECTED_NODE': {
       return {
         ...state,
