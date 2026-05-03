@@ -814,7 +814,7 @@ export function findAllDirectedCycles(nodes: NodeId[], edges: GraphEdge[]): Node
         const cycleKey = normalizeCycle(cycle);
         if (!seenCycles.has(cycleKey)) {
           seenCycles.add(cycleKey);
-          allCycles.push([...path]);
+          allCycles.push(cycle);
         }
       } else if (!visited.has(neighbor)) {
         dfsForAllCycles(startNode, neighbor, path, visited);
@@ -892,7 +892,7 @@ export function findAllUndirectedCycles(nodes: NodeId[], edges: GraphEdge[]): No
         const circuitKey = normalizeCycle(circuit);
         if (!seenCycles.has(circuitKey)) {
           seenCycles.add(circuitKey);
-          allCycles.push([...path]);
+          allCycles.push(circuit);
         }
       } else if (!visited.has(neighbor)) {
         dfsForAllCycles(startNode, neighbor, path, visited, currentNode);

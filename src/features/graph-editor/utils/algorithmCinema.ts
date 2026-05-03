@@ -1,7 +1,7 @@
 import type { GraphEdge, GraphState, NodeId } from '../../graph/model/types'
-import { findEulerianPathOrCircuit, buildEulerianTraceReport, findAllDirectedCycles, findAllUndirectedCycles } from '../../graph/utils/graphAnalysis'
+import { findEulerianPathOrCircuit, buildEulerianTraceReport } from '../../graph/utils/graphAnalysis'
 
-export type CinemaAlgorithm = 'BFS' | 'DFS' | 'Dijkstra' | 'Prims' | 'Kruskals' | 'MaxFlow' | 'ConnectedComponents' | 'SpanningForest' | 'StronglyConnectedComponents' | 'Bellman' | 'BellmanFord' | 'WelshPowell' | 'EulerienPath' | 'RechercheChaine' | 'AllCycles'
+export type CinemaAlgorithm = 'BFS' | 'DFS' | 'Dijkstra' | 'Prims' | 'Kruskals' | 'MaxFlow' | 'ConnectedComponents' | 'SpanningForest' | 'StronglyConnectedComponents' | 'Bellman' | 'BellmanFord' | 'WelshPowell' | 'EulerienPath' | 'RechercheChaine'
 
 export interface CinemaStep {
   narration: string
@@ -1154,6 +1154,27 @@ function buildSearchChainProgram(graph: GraphState, source: NodeId, target: Node
   const treeEdgesAccumulated: string[] = []
   let foundTarget = false
 
+  // Early exit: si la source ou la cible est isolée (aucune arête incidente), inutile de parcourir tout le graphe.
+  const hasIncidentEdges = (n: NodeId) => graph.edges.some(e => e.from === n || e.to === n)
+  if (!hasIncidentEdges(source)) {
+    steps.push({
+      narration: `❌ Abandon : la source ${source} est isolée (aucune arête incidente).`,
+      visited: [],
+      frontier: [],
+      treeEdges: []
+    })
+    return steps
+  }
+  if (!hasIncidentEdges(target)) {
+    steps.push({
+      narration: `❌ Abandon : la cible ${target} est isolée (aucune arête incidente).`,
+      visited: [],
+      frontier: [],
+      treeEdges: []
+    })
+    return steps
+  }
+
   // Étape 2: Initialisation
   steps.push({
     narration: `Sommet source: ${source}`,
@@ -1213,6 +1234,7 @@ function buildSearchChainProgram(graph: GraphState, source: NodeId, target: Node
         }
       }
     }
+    if (foundTarget) break
   }
 
   if (!foundTarget) {
@@ -1591,99 +1613,7 @@ function buildWelshPowellProgram(graph: GraphState): CinemaStep[] {
   return steps
 }
 
-function buildAllCyclesProgram(graph: GraphState): CinemaStep[] {
-  const steps: CinemaStep[] = []
-  const isDirected = graph.directed
-  const cycleType = isDirected ? 'cycle' : 'circuit'
-  const cycleLabelEn = isDirected ? 'cycles' : 'circuits'
-
-  // Récupérer tous les cycles
-  const allCycles = isDirected
-    ? findAllDirectedCycles(graph.nodes, graph.edges)
-    : findAllUndirectedCycles(graph.nodes, graph.edges)
-
-  steps.push({
-    narration: `Initialisation: Recherche de TOUS les ${cycleLabelEn} dans le graphe ${isDirected ? 'orienté' : 'non orienté'}.`,
-    visited: [],
-    frontier: [],
-    treeEdges: []
-  })
-
-  if (allCycles.length === 0) {
-    steps.push({
-      narration: `Résultat: Aucun ${cycleType} détecté dans le graphe. Le graphe est acyclique.`,
-      visited: [],
-      frontier: [],
-      treeEdges: []
-    })
-    return steps
-  }
-
-  steps.push({
-    narration: `${allCycles.length} ${cycleLabelEn} trouvé(s). Affichage de chacun...`,
-    visited: [],
-    frontier: [],
-    treeEdges: []
-  })
-
-  // Accumulate all for final view
-  const finalNodeColors: Record<number, string> = {}
-  const finalEdgeColors: Record<string, string> = {}
-  const finalTreeEdgesSet = new Set<string>()
-
-  // Visualiser chaque cycle
-  allCycles.forEach((cycle, cycleIndex) => {
-    // Trouver les arêtes du cycle
-    const treeEdges: string[] = []
-    const edgeColors: Record<string, string> = {}
-    const nodeColors: Record<number, string> = {}
-    
-    // Pick a color from the component palette
-    const color = COMPONENT_COLORS[cycleIndex % COMPONENT_COLORS.length]
-
-    for (let i = 0; i < cycle.length - 1; i++) {
-      const from = cycle[i]
-      const to = cycle[i + 1]
-      const matchingEdge = graph.edges.find(e =>
-        (e.from === from && e.to === to) ||
-        (!isDirected && e.from === to && e.to === from)
-      )
-      if (matchingEdge) {
-        treeEdges.push(matchingEdge.id)
-        edgeColors[matchingEdge.id] = color
-        
-        finalTreeEdgesSet.add(matchingEdge.id)
-        finalEdgeColors[matchingEdge.id] = color
-      }
-    }
-    
-    cycle.forEach(nodeId => {
-      nodeColors[nodeId] = color
-      finalNodeColors[nodeId] = color
-    })
-
-    const cycleLabel = cycle.join(' → ')
-    steps.push({
-      narration: `${cycleType} #${cycleIndex + 1}: ${cycleLabel}`,
-      visited: cycle,
-      frontier: [],
-      treeEdges,
-      edgeColors,
-      nodeColors,
-    })
-  })
-
-  steps.push({
-    narration: `Résultat final: ${allCycles.length} ${cycleLabelEn} au total ont été détectés dans ce graphe.`,
-    visited: graph.nodes,
-    frontier: [],
-    treeEdges: Array.from(finalTreeEdgesSet),
-    edgeColors: finalEdgeColors,
-    nodeColors: finalNodeColors,
-  })
-
-  return steps
-}
+// buildAllCyclesProgram removed: AllCycles cinema algorithm has been deleted.
 
 export function buildCinemaProgram(
   graph: GraphState,
@@ -1717,8 +1647,7 @@ export function buildCinemaProgram(
         return buildStronglyConnectedComponentsProgram(graph)
       case 'WelshPowell':
         return buildWelshPowellProgram(graph)
-      case 'AllCycles':
-        return buildAllCyclesProgram(graph)
+      // 'AllCycles' removed — no-op fallback
       case 'Bellman':
       case 'BellmanFord':
         return buildBellmanProgram(graph, source)

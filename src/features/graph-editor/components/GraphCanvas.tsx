@@ -73,6 +73,11 @@ interface HistoryDiffOverlay {
   removedEdges: string[]
 }
 
+interface BridgeHighlightResult {
+  edgeIds: string[]
+  nodeIds: number[]
+}
+
 
 
 function applyCollisions(
@@ -109,6 +114,60 @@ function applyCollisions(
   }
 
   return { x: cx, y: cy }
+}
+
+function findBridgeHighlights(graph: { nodes: number[]; edges: { id: string; from: number; to: number }[]; directed: boolean }): BridgeHighlightResult {
+  const componentCount = (edges: { id: string; from: number; to: number }[]) => {
+    return findComponents({
+      nodes: graph.nodes,
+      edges,
+      directed: false,
+      weighted: false,
+      positions: {},
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      edgeDraftFrom: null,
+      edgeDraftTo: null,
+    } as any).length
+  }
+
+  const baselineComponents = componentCount(graph.edges)
+  const logicalEdgeGroups = new Map<string, { ids: string[]; representativeId: string }>()
+
+  for (const edge of graph.edges) {
+    const groupKey = graph.directed ? edge.id : (edge.symmetryKey ?? edge.id)
+    const currentGroup = logicalEdgeGroups.get(groupKey)
+    if (currentGroup) {
+      currentGroup.ids.push(edge.id)
+    } else {
+      logicalEdgeGroups.set(groupKey, {
+        ids: [edge.id],
+        representativeId: edge.id,
+      })
+    }
+  }
+
+  const bridgeIds: string[] = []
+
+  for (const group of logicalEdgeGroups.values()) {
+    const remainingEdges = graph.edges.filter((candidate) => !group.ids.includes(candidate.id))
+    const nextComponents = componentCount(remainingEdges)
+
+    if (nextComponents > baselineComponents) {
+      bridgeIds.push(group.representativeId)
+    }
+  }
+
+  const nodeIds = new Set<number>()
+  for (const edgeId of bridgeIds) {
+    const edge = graph.edges.find((candidate) => candidate.id === edgeId)
+    if (edge) {
+      nodeIds.add(edge.from)
+      nodeIds.add(edge.to)
+    }
+  }
+
+  return { edgeIds: bridgeIds, nodeIds: Array.from(nodeIds) }
 }
 
 
@@ -551,13 +610,13 @@ export function GraphCanvas() {
       return
     }
 
-    const match = /^(path|neighbors|degree|components)\s*(.*)$/i.exec(input)
+    const match = /^(path|neighbors|degree|components|bridge|isthme)\s*(.*)$/i.exec(input)
     if (match === null) {
       setQueryHighlights({
         nodes: [],
         edges: [],
         color: '#f87171',
-        message: 'Unknown command. Use: path, neighbors, degree, components.',
+        message: 'Unknown command. Use: path, neighbors, degree, components, bridge, isthme.',
         components: [],
       })
       return
@@ -575,6 +634,27 @@ export function GraphCanvas() {
         message: `Found ${components.length} connected component(s).`,
         components,
       })
+    } else if (command === 'bridge' || command === 'isthme') {
+      if (graph.directed) {
+        setQueryHighlights({
+          nodes: [],
+          edges: [],
+          color: '#f59e0b',
+          message: "Un isthme est une arête dont la suppression déconnecte le graphe. Cette recherche s'applique aux graphes non orientés.",
+          components: [],
+        })
+      } else {
+        const bridges = findBridgeHighlights(graph)
+        const bridgeLabel = bridges.edgeIds.length <= 1 ? 'isthme' : 'isthmes'
+        const bridgeSummary = bridges.edgeIds.length > 0 ? bridges.edgeIds.join(', ') : 'aucun'
+        setQueryHighlights({
+          nodes: bridges.nodeIds,
+          edges: bridges.edgeIds,
+          color: '#fb7185',
+          message: `Un isthme est une arête (un lien). Une arête est un isthme si, quand on la supprime, le graphe devient déconnecté. ${bridges.edgeIds.length} ${bridgeLabel} détecté(s): ${bridgeSummary}.`,
+          components: [],
+        })
+      }
     } else if (command === 'neighbors') {
       const nodeId = Number(args[0])
       const neighbors = neighborsOfNode(graph, nodeId)

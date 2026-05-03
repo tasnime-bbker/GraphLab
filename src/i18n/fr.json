@@ -79,7 +79,7 @@
     "apply": "Appliquer les modifications"
   },
   "query": {
-    "placeholder": "Requête : path 1 5 | neighbors 3 | degree 4 | components",
+    "placeholder": "Requête : path 1 5 | neighbors 3 | degree 4 | components | bridge / isthme",
     "run": "Lancer la requête",
     "clear": "Effacer"
   },
