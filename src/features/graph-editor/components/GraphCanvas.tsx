@@ -1456,7 +1456,7 @@ export function GraphCanvas() {
                   key={`cinema-tree-edge-${edgeId}`}
                   d={geometry.path}
                   fill="none"
-                  stroke={colorScheme === 'dark' ? '#22c55e' : '#15803d'}
+                  stroke={currentCinemaStep.edgeColors?.[edgeId] || (colorScheme === 'dark' ? '#22c55e' : '#15803d')}
                   strokeWidth={4}
                   strokeLinecap="round"
                   opacity={0.8}
@@ -1748,8 +1748,8 @@ export function GraphCanvas() {
                     isCinemaVisited && (
                       <circle
                         r={NODE_RADIUS + 5}
-                        fill="none"
-                        stroke={colorScheme === 'dark' ? '#22c55e' : '#15803d'}
+                        fill={currentCinemaStep.nodeColors?.[nodeId] ? currentCinemaStep.nodeColors[nodeId] + '22' : 'none'}
+                        stroke={currentCinemaStep.nodeColors?.[nodeId] || (colorScheme === 'dark' ? '#22c55e' : '#15803d')}
                         strokeWidth={2.5}
                         opacity={0.8}
                       />

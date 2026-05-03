@@ -22,6 +22,9 @@ export interface CinemaStep {
   /** Coloration par groupe (Welsh-Powell, etc.) :
    *  chaque entrée porte une couleur CSS et les IDs des sommets de ce groupe. */
   colorGroups?: Array<{ color: string; nodeIds: NodeId[] }>
+  /** Custom colors for nodes and edges (Spanning Forest, etc.) */
+  nodeColors?: Record<number, string>
+  edgeColors?: Record<string, string>
 }
 
 export interface CinemaProgram {
@@ -653,6 +656,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
   // componentMembers[i] = liste des noeuds de la composante i
   const componentMembers: NodeId[][] = []
   let componentIndex = 0
+  const nodeColors: Record<number, string> = {}
  
   // ── Étape initiale ──────────────────────────────────────────────────────────
   const allIdle: Record<number, { id: number; state: 'idle' }> = {}
@@ -665,6 +669,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
     visited: [],
     frontier: [],
     treeEdges: [],
+    nodeColors: { ...nodeColors },
     componentColors: { ...allIdle },   // on réutilise le champ visited/frontier
     componentMap: {},
   } as unknown as CinemaStep)
@@ -702,6 +707,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
     const queue: NodeId[] = [startNode]
     visited.add(startNode)
     componentOf[startNode] = componentIndex
+    nodeColors[startNode] = color
     members.push(startNode)
  
     // Étape : découverte du nœud racine de la nouvelle composante
@@ -713,18 +719,20 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
       visited: [...visited],
       frontier: [startNode],
       treeEdges: [],
+      nodeColors: { ...nodeColors },
       _nodes: nodeSnap1,
       _highlights: [...buildHighlights().slice(0, componentIndex), { type: 'convex_hull', nodes: [...members], color }],
     } as unknown as CinemaStep)
  
     while (queue.length > 0) {
       const current = queue.shift()!
-     const neighbors = neighborsFor(graph, current, true) 
+      const neighbors = neighborsFor(graph, current, true) 
  
       for (const { nodeId: neighbor, edgeId } of neighbors) {
         if (!visited.has(neighbor)) {
           visited.add(neighbor)
           componentOf[neighbor] = componentIndex
+          nodeColors[neighbor] = color
           members.push(neighbor)
           queue.push(neighbor)
  
@@ -739,6 +747,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
             treeEdges: [],
             currentNode: neighbor,
             currentEdgeId: edgeId,
+            nodeColors: { ...nodeColors },
             _nodes: nodeSnap,
             _highlights: [...buildHighlights().slice(0, componentIndex), { type: 'convex_hull', nodes: [...members], color }],
           } as unknown as CinemaStep)
@@ -752,6 +761,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
       visited: [...visited],
       frontier: [],
       treeEdges: [],
+      nodeColors: { ...nodeColors },
       _nodes: buildNodeSnapshot(),
       _highlights: buildHighlights(),
     } as unknown as CinemaStep)
@@ -765,6 +775,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
     visited: [...visited],
     frontier: [],
     treeEdges: [],
+    nodeColors: { ...nodeColors },
     _nodes: buildNodeSnapshot(),
     _highlights: [
       ...buildHighlights(),
@@ -787,6 +798,8 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
   const componentOf: Record<NodeId, number> = {}
   const componentMembers: NodeId[][] = []
   let componentIndex = 0
+  const nodeColors: Record<number, string> = {}
+  const edgeColors: Record<string, string> = {}
  
   // Snapshot helpers
   function buildNodeSnapshot(visiting?: NodeId): Record<number, { id: number; state: string; badge?: string }> {
@@ -851,6 +864,8 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
       frontier: [startNode],
       treeEdges: [...forestEdgeIds],
       currentNode: startNode,
+      nodeColors: { ...nodeColors },
+      edgeColors: { ...edgeColors },
       _nodes: buildNodeSnapshot(startNode),
       _edges: buildEdgeSnapshot(),
       _highlights: buildHighlights(),
@@ -868,6 +883,12 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
         componentOf[neighbor] = componentIndex
         members.push(neighbor)
         forestEdgeIds.push(edgeId)
+        
+        const currentColor = COMPONENT_COLORS[componentIndex % COMPONENT_COLORS.length]
+        nodeColors[neighbor] = currentColor
+        edgeColors[edgeId] = currentColor
+        nodeColors[startNode] = currentColor // Ensure start node is colored
+        
         stack.push(neighbor)
  
         steps.push({
@@ -877,6 +898,8 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
           treeEdges: [...forestEdgeIds],
           currentNode: neighbor,
           currentEdgeId: edgeId,
+          nodeColors: { ...nodeColors },
+          edgeColors: { ...edgeColors },
           _nodes: buildNodeSnapshot(neighbor),
           _edges: buildEdgeSnapshot(edgeId),
           _highlights: buildHighlights(),
@@ -894,6 +917,8 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
       visited: [...visited],
       frontier: [],
       treeEdges: [...forestEdgeIds],
+      nodeColors: { ...nodeColors },
+      edgeColors: { ...edgeColors },
       _nodes: buildNodeSnapshot(),
       _edges: buildEdgeSnapshot(),
       _highlights: buildHighlights(),
@@ -908,6 +933,8 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
     visited: [...visited],
     frontier: [],
     treeEdges: [...forestEdgeIds],
+    nodeColors: { ...nodeColors },
+    edgeColors: { ...edgeColors },
     _nodes: buildNodeSnapshot(),
     _edges: buildEdgeSnapshot(),
     _highlights: [

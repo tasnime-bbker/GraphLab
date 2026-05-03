@@ -81,33 +81,51 @@ export function GraphContractPanel() {
             </button>
           </Group>
         </Group>
-        <Group align="stretch" gap="xs">
-          <Select
-            w="100%"
-            size="xs"
-            label={t('toolbar.format')}
-            value={exportFormat}
-            onChange={(value) => value && setExportFormat(value as ExportFormat)}
-            data={[
-              { value: 'json', label: 'JSON' },
-              { value: 'adjacency', label: 'Adjacency List' },
-              { value: 'edgelist', label: 'Edge List' },
-              { value: 'dot', label: 'DOT' },
-              { value: 'tikz', label: 'LaTeX TikZ' },
-            ]}
-          />
-          <div style={{ flex: 1, minHeight: 500, overflow: 'auto' }}>
-            {previewHtml ? (
-              <pre
-                className="p-4 rounded-xl border"
-                style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface-strong)', color: 'var(--app-text)', maxHeight: '700px', overflow: 'scroll' }}
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
-              />
-            ) : (
-              <Code block style={{ display: 'block', minHeight: 500, padding: 12 }}>{exportText}</Code>
-            )}
-          </div>
-        </Group>
+        <Select
+          w="100%"
+          size="xs"
+          label={t('toolbar.format')}
+          value={exportFormat}
+          onChange={(value) => value && setExportFormat(value as ExportFormat)}
+          data={[
+            { value: 'json', label: 'JSON' },
+            { value: 'adjacency', label: 'Adjacency List' },
+            { value: 'edgelist', label: 'Edge List' },
+            { value: 'dot', label: 'DOT' },
+            { value: 'tikz', label: 'LaTeX TikZ' },
+          ]}
+        />
+        <div style={{ height: 1050, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {previewHtml ? (
+            <pre
+              className="p-4 rounded-xl border flex-1"
+              style={{
+                borderColor: 'var(--app-border)',
+                backgroundColor: 'var(--app-surface-strong)',
+                color: 'var(--app-text)',
+                overflow: 'auto',
+                margin: 0,
+                fontSize: '13px',
+                fontFamily: 'monospace'
+              }}
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
+            />
+          ) : (
+            <Code
+              block
+              className="flex-1"
+              style={{
+                display: 'block',
+                padding: 12,
+                overflow: 'auto',
+                margin: 0,
+                fontSize: '13px'
+              }}
+            >
+              {exportText}
+            </Code>
+          )}
+        </div>
       </Stack>
     </Paper>
   )
