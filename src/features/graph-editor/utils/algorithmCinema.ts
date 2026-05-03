@@ -214,7 +214,7 @@ function buildDfsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
 
   return steps
 }
-
+/*
 function buildDijkstraProgram(graph: GraphState, source: NodeId): CinemaStep[] {
   const steps: CinemaStep[] = []
 
@@ -337,7 +337,7 @@ function buildDijkstraProgram(graph: GraphState, source: NodeId): CinemaStep[] {
 
   return steps
 }
-
+*/
 function unionFind(nodes: NodeId[]) {
   const parent = new Map<NodeId, NodeId>()
   const rank = new Map<NodeId, number>()
@@ -2143,8 +2143,9 @@ export function buildCinemaProgram(
         return buildEdgeColoringProgram(graph)
       // 'AllCycles' removed — no-op fallback
       case 'Bellman':
-      case 'BellmanFord':
         return buildBellmanProgram(graph, source)
+      case 'BellmanFord':
+        return buildBellmanFordProgram(graph, source)
       default:
         return []
     }
@@ -2259,6 +2260,254 @@ function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
     visited: [],
     frontier: [],
     treeEdges: rebuildTreeEdges(),
+    distances: toDistanceRecord(),
+  })
+
+  return steps
+}
+function buildBellmanFordProgram(graph: GraphState, source: NodeId): CinemaStep[] {
+  const steps: CinemaStep[] = []
+
+  const distances = new Map<NodeId, number>()
+  const parent = new Map<NodeId, string>()
+
+  for (const node of graph.nodes) {
+    distances.set(node, Number.POSITIVE_INFINITY)
+  }
+  distances.set(source, 0)
+
+  const toDistanceRecord = (): Record<number, number> => {
+    const record: Record<number, number> = {}
+    for (const node of graph.nodes) {
+      const val = distances.get(node)!
+      if (val !== Number.POSITIVE_INFINITY) record[node] = val
+    }
+    return record
+  }
+
+  const rebuildTreeEdges = () => Array.from(parent.values())
+
+  const V = new Set<NodeId>([source])
+
+  steps.push({
+    narration: `[Iter 1] Initialization: d(${source}) = 0, all others = ∞. V = {${source}}`,
+    visited: [],
+    frontier: [source],
+    treeEdges: [],
+    currentNode: source,
+    distances: toDistanceRecord(),
+  })
+
+  let iterCount = 2
+
+  while (V.size > 0) {
+    const i = V.values().next().value as NodeId
+    V.delete(i)
+
+    steps.push({
+      narration: `[Iter ${iterCount}] Select node ${i} from V and remove it. V = {${[...V].join(', ') || '∅'}}`,
+      visited: [],
+      frontier: [...V],
+      treeEdges: rebuildTreeEdges(),
+      currentNode: i,
+      distances: toDistanceRecord(),
+    })
+
+    const outEdges = graph.edges.filter(e => e.from === i)
+
+    for (const edge of outEdges) {
+      const j = edge.to
+      const lij = graph.weighted ? edge.weight : 1
+      const di = distances.get(i)!
+      const dj = distances.get(j)!
+      const newDist = di + lij
+
+      steps.push({
+        narration: `[Iter ${iterCount}] Examine edge (${i} → ${j}), weight = ${lij}. d(${i}) + ${lij} = ${newDist} vs d(${j}) = ${dj === Infinity ? '∞' : dj}`,
+        visited: [],
+        frontier: [...V],
+        treeEdges: rebuildTreeEdges(),
+        currentNode: i,
+        currentEdgeId: edge.id,
+        distances: toDistanceRecord(),
+      })
+
+      if (dj > newDist) {
+        distances.set(j, newDist)
+        parent.set(j, edge.id)
+        V.add(j)
+
+        steps.push({
+          narration: `[Iter ${iterCount}] ✅ Update: d(${j}) = ${newDist}. Node ${j} added to V. V = {${[...V].join(', ')}}`,
+          visited: [],
+          frontier: [...V],
+          treeEdges: rebuildTreeEdges(),
+          currentNode: j,
+          currentEdgeId: edge.id,
+          distances: toDistanceRecord(),
+        })
+      } else {
+        steps.push({
+          narration: `[Iter ${iterCount}] ❌ No update for ${j}: ${newDist} ≥ ${dj === Infinity ? '∞' : dj}`,
+          visited: [],
+          frontier: [...V],
+          treeEdges: rebuildTreeEdges(),
+          currentNode: i,
+          currentEdgeId: edge.id,
+          distances: toDistanceRecord(),
+        })
+      }
+    }
+
+    iterCount++
+  }
+
+  steps.push({
+    narration: `V is empty. Algorithm complete after ${iterCount - 1} iteration(s). Distances: ${graph.nodes.map(n => `d(${n})=${distances.get(n) === Infinity ? '∞' : distances.get(n)}`).join(', ')}`,
+    visited: graph.nodes.filter(n => distances.get(n) !== Infinity),
+    frontier: [],
+    treeEdges: rebuildTreeEdges(),
+    distances: toDistanceRecord(),
+  })
+
+  return steps
+}
+
+function buildDijkstraProgram(graph: GraphState, source: NodeId): CinemaStep[] {
+  const steps: CinemaStep[] = []
+  const distances = new Map<NodeId, number>()
+  const visited = new Set<NodeId>()
+  const treeEdges: string[] = []
+  const incomingEdge = new Map<NodeId, string>()
+
+  for (const nodeId of graph.nodes) {
+    distances.set(nodeId, Number.POSITIVE_INFINITY)
+  }
+  distances.set(source, 0)
+
+  const toDistanceRecord = (): Record<number, number> => {
+    const record: Record<number, number> = {}
+    for (const nodeId of graph.nodes) {
+      const value = distances.get(nodeId) ?? Number.POSITIVE_INFINITY
+      if (value !== Number.POSITIVE_INFINITY) record[nodeId] = value
+    }
+    return record
+  }
+
+  const distSnapshot = (): string =>
+    graph.nodes
+      .map(n => {
+        const d = distances.get(n)
+        return `d(${n})=${d === Number.POSITIVE_INFINITY ? '∞' : d}`
+      })
+      .join(', ')
+
+  const sSnapshot = (): string => `{${[...visited].join(', ')}}`
+
+  // ── Iter 1 : Initialisation pure ──────────────────────────────────────────
+  visited.add(source)
+
+  steps.push({
+    narration: `[Iter 1] Initialization: d(${source}) = 0, all others = ∞. xp = ${source}, A(xp) = -, S = {${source}}. ${distSnapshot()}`,
+    visited: [...visited],
+    frontier: graph.nodes.filter(n => !visited.has(n)),
+    treeEdges: [],
+    currentNode: source,
+    distances: toDistanceRecord(),
+  })
+
+  // ── Itérations 2, 3, ... ──────────────────────────────────────────────────
+  let iterCount = 2
+  let currentNode: NodeId = source
+
+  while (true) {
+    // Traitement des arcs sortants du xp courant
+    for (const neighbor of neighborsFor(graph, currentNode)) {
+      if (visited.has(neighbor.nodeId)) continue
+
+      const currentDist = distances.get(currentNode) ?? Number.POSITIVE_INFINITY
+      const tentative = currentDist + Math.max(0, neighbor.weight)
+      const currentBest = distances.get(neighbor.nodeId) ?? Number.POSITIVE_INFINITY
+
+      steps.push({
+        narration: `[Iter ${iterCount}] Examine edge (${currentNode} → ${neighbor.nodeId}), weight = ${neighbor.weight}. d(${currentNode}) + ${neighbor.weight} = ${tentative} vs d(${neighbor.nodeId}) = ${currentBest === Infinity ? '∞' : currentBest}`,
+        visited: [...visited],
+        frontier: graph.nodes.filter(n => !visited.has(n)),
+        treeEdges: [...treeEdges],
+        currentNode,
+        currentEdgeId: neighbor.edgeId,
+        distances: toDistanceRecord(),
+      })
+
+      if (tentative < currentBest) {
+        distances.set(neighbor.nodeId, tentative)
+        incomingEdge.set(neighbor.nodeId, neighbor.edgeId)
+
+        steps.push({
+          narration: `[Iter ${iterCount}] ✅ Update: d(${neighbor.nodeId}) = ${currentBest === Infinity ? '∞' : currentBest} → ${tentative}. ${distSnapshot()}`,
+          visited: [...visited],
+          frontier: graph.nodes.filter(n => !visited.has(n)),
+          treeEdges: [...treeEdges],
+          currentNode: neighbor.nodeId,
+          currentEdgeId: neighbor.edgeId,
+          distances: toDistanceRecord(),
+        })
+      } else {
+        steps.push({
+          narration: `[Iter ${iterCount}] ❌ No update for ${neighbor.nodeId}: ${tentative} ≥ ${currentBest === Infinity ? '∞' : currentBest}`,
+          visited: [...visited],
+          frontier: graph.nodes.filter(n => !visited.has(n)),
+          treeEdges: [...treeEdges],
+          currentNode,
+          currentEdgeId: neighbor.edgeId,
+          distances: toDistanceRecord(),
+        })
+      }
+    }
+
+    // Choisir le prochain xp = nœud non visité avec distance minimale
+    let nextNode: NodeId | null = null
+    let nextDist = Number.POSITIVE_INFINITY
+    for (const n of graph.nodes) {
+      if (visited.has(n)) continue
+      const d = distances.get(n) ?? Number.POSITIVE_INFINITY
+      if (d < nextDist) { nextDist = d; nextNode = n }
+    }
+
+    if (nextNode === null) break
+
+    // Ajouter nextNode à S
+    visited.add(nextNode)
+    const edgeId = incomingEdge.get(nextNode)
+    if (typeof edgeId === 'string' && !treeEdges.includes(edgeId)) {
+      treeEdges.push(edgeId)
+    }
+
+    const arcLabel = (() => {
+      const e = graph.edges.find(x => x.id === incomingEdge.get(nextNode!))
+      return e ? `(${e.from},${e.to})` : '-'
+    })()
+
+    // Step résumé de fin d'itération : distances + xp choisi + S
+    steps.push({
+      narration: `[Iter ${iterCount}] End: ${distSnapshot()} | xp = ${nextNode}, A(xp) = ${arcLabel}, S = ${sSnapshot()}`,
+      visited: [...visited],
+      frontier: graph.nodes.filter(n => !visited.has(n)),
+      treeEdges: [...treeEdges],
+      currentNode: nextNode,
+      distances: toDistanceRecord(),
+    })
+
+    currentNode = nextNode
+    iterCount++
+  }
+
+  // Step final
+  steps.push({
+    narration: `Dijkstra complete after ${iterCount - 1} iteration(s). ${distSnapshot()} | S = ${sSnapshot()} — STOP`,
+    visited: [...visited],
+    frontier: [],
+    treeEdges: [...treeEdges],
     distances: toDistanceRecord(),
   })
 
