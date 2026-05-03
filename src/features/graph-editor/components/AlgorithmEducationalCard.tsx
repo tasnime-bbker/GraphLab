@@ -192,6 +192,21 @@ const ALGORITHM_DOCS: Record<CinemaAlgorithm, { title: string, description: stri
       "Validation : Confirmez immédiatement le succès dès que le nœud cible est physiquement atteint."
     ],
     videoUrl: "https://www.youtube.com/embed/09_LlHjoEiY"
+  },
+  AllCycles: {
+    title: "Recherche de Tous les Cycles/Circuits",
+    description: "Détecte et affiche TOUS les cycles (graphe orienté) ou circuits (graphe non orienté) existants dans le graphe. Contrairement aux recherches basiques, cet algorithme explore exhaustivement pour trouver chaque boucle fermée.",
+    complexity: "Temps: O(N(V + E)) | Espace: O(V²)",
+    useCase: "Analyse de dépendances circulaires, détection de deadlocks dans les systèmes concurrents, analyse de boucles infinies possibles.",
+    steps: [
+      "Initialisation : Préparez une structure pour mémoriser tous les cycles découverts et un ensemble de cycles déjà vu pour éviter les doublons.",
+      "Parcours itératif : Pour chaque nœud du graphe, initiez une recherche en profondeur (DFS) depuis ce nœud.",
+      "Exploration complète : À chaque itération DFS, explorez tous les chemins possibles en gardant en mémoire le nœud de départ.",
+      "Détection de boucle : Dès qu'un arête revient vers le nœud de départ et que le chemin a une longueur ≥ 2, enregistrez le cycle trouvé.",
+      "Normalisation : Appliquez une fonction de normalisation pour éliminer les doublons (ex: 1→2→3→1 et 2→3→1→2 sont identiques).",
+      "Résultat final : Retournez la liste complète et dédupliquée de tous les cycles/circuits trouvés."
+    ],
+    videoUrl: "https://www.youtube.com/embed/wqGv_kii6Vk"
   }
 }
 

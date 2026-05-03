@@ -125,6 +125,7 @@ export function AlgorithmCinemaPanel({
               <option value="WelshPowell">Welsh-Powell</option>
               <option value="EulerienPath">Euler</option>
               <option value="RechercheChaine">Chain Search</option>
+              <option value="AllCycles">All Cycles</option>
             </select>
           </div>
 
