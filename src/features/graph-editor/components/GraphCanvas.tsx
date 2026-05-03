@@ -27,6 +27,8 @@ import { AlgorithmCinemaPanel } from './AlgorithmCinemaPanel'
 import { calculateSnap } from '../hooks/useMagneticSnap'
 import { CanvasHelp } from '../../workspace/components/CanvasHelp'
 import { CanvasToolbar } from './CanvasToolbar'
+import { ScreenshotRegionSelector } from './ScreenshotRegionSelector'
+import { toPng } from 'html-to-image'
 import { useShortcut } from '../../../shared/hooks/useShortcut'
 import { useI18n } from '../../../shared/context/I18nContext'
 import { useAppTheme } from '../../../shared/context/AppThemeContext'
@@ -327,6 +329,7 @@ export function GraphCanvas() {
   const [autoLayoutRunning, setAutoLayoutRunning] = useState(false)
   const [edgeDraftDirected, setEdgeDraftDirected] = useState(graph.directed)
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
+  const [isScreenshotMode, setIsScreenshotMode] = useState(false)
 
   useEffect(() => {
     const onStatus = (e: any) => setIsCommandPaletteOpen(e.detail.open)
@@ -1892,18 +1895,8 @@ export function GraphCanvas() {
               }
             }
           }}
-          onScreenshot={async () => {
-            if (svgRef.current) {
-              const blob = await svgToPngBlob(svgRef.current)
-              if (blob) {
-                const url = URL.createObjectURL(blob)
-                const link = document.createElement('a')
-                link.href = url
-                link.download = 'graphlab-screenshot.png'
-                link.click()
-                URL.revokeObjectURL(url)
-              }
-            }
+          onScreenshot={() => {
+            setIsScreenshotMode(true)
           }}
           onResetView={() => applyZoomTransform({ x: 0, y: 0, k: 1 })}
           onZoomIn={() => {
@@ -1929,6 +1922,63 @@ export function GraphCanvas() {
           isCommandPaletteOpen={isCommandPaletteOpen}
           zoomLevel={transform.k}
         />
+      {isScreenshotMode && (
+        <ScreenshotRegionSelector
+          onCancel={() => setIsScreenshotMode(false)}
+          onSelect={async (rect) => {
+            setIsScreenshotMode(false)
+            
+            // Wait for the overlay to unmount
+            await new Promise((r) => setTimeout(r, 50))
+            
+            const container = document.querySelector('.flex-grow.relative.overflow-hidden') as HTMLElement
+            if (!container) return
+
+            try {
+              const dataUrl = await toPng(container, {
+                backgroundColor: 'rgba(0,0,0,0)',
+                pixelRatio: window.devicePixelRatio || 1,
+              })
+
+              const img = new Image()
+              img.src = dataUrl
+              await new Promise((resolve) => { img.onload = resolve })
+
+              const canvas = document.createElement('canvas')
+              const dpr = window.devicePixelRatio || 1
+              canvas.width = rect.width * dpr
+              canvas.height = rect.height * dpr
+              const ctx = canvas.getContext('2d')
+              if (!ctx) return
+
+              ctx.drawImage(
+                img,
+                rect.x * dpr,
+                rect.y * dpr,
+                rect.width * dpr,
+                rect.height * dpr,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+              )
+
+              canvas.toBlob((blob) => {
+                if (blob) {
+                  const url = URL.createObjectURL(blob)
+                  const link = document.createElement('a')
+                  link.href = url
+                  link.download = 'graphlab-zone-screenshot.png'
+                  link.click()
+                  URL.revokeObjectURL(url)
+                }
+              }, 'image/png')
+            } catch (err) {
+              console.error('Screenshot failed', err)
+            }
+          }}
+        />
+      )}
       </div>
     </section>
   )
