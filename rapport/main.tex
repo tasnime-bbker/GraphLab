@@ -1,0 +1,645 @@
+\documentclass[a4paper,12pt]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{array,enumitem}
+\usepackage[breaklinks=true,hidelinks,hyperfootnotes=false,linkcolor=black,citecolor=black]{hyperref}
+\usepackage{xurl}
+\usepackage{titlesec}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{csquotes}
+\usepackage{longtable}
+\geometry{a4paper, top=0.8in, bottom=1in, left=1in, right=1in}
+\usepackage{setspace}
+\usepackage{mathptmx}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\definecolor{customblue}{RGB}{31, 77, 121}
+\definecolor{teal100}{rgb}{0.852, 0.948, 0.928}
+\definecolor{headerblue}{RGB}{31, 77, 121}
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{font=scriptsize}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{colortbl}
+\usepackage{booktabs}
+
+\titleformat{\chapter}[hang]
+  {\normalfont\bfseries\Large\color{customblue}}
+  {Chapitre \thechapter\ —}
+  {0.5em}{}
+  [\vspace{0.3ex}\rule{\textwidth}{0.8pt}]
+\titlespacing*{\chapter}{0pt}{10pt}{10pt}
+
+\titleformat{\section}{\normalfont\bfseries\large}{}{0em}{}
+\titleformat{\subsection}{\normalfont\bfseries\normalsize}{}{0em}{}
+
+\onehalfspacing
+
+% ─── DOCUMENT ────────────────────────────────────────────────────────────────
+\begin{document}
+\pagenumbering{gobble}
+
+% ─── PAGE DE GARDE ───────────────────────────────────────────────────────────
+\begin{titlepage}
+\centering
+\input{page_garde}
+
+\end{titlepage}
+\clearpage
+
+% ─── TABLE DES MATIÈRES ──────────────────────────────────────────────────────
+\pagenumbering{roman}
+\tableofcontents
+\clearpage
+
+% ─── INTRODUCTION ────────────────────────────────────────────────────────────
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\chapter*{Introduction générale}
+\addcontentsline{toc}{chapter}{Introduction générale}
+
+La théorie des graphes constitue l'un des fondements les plus puissants de l'informatique moderne.
+Elle intervient dans des domaines aussi variés que la navigation GPS, les réseaux de communication,
+l'intelligence artificielle ou encore l'optimisation logistique.
+Pourtant, l'apprentissage de ses algorithmes reste souvent difficile en raison de leur caractère
+abstrait et de la complexité des structures manipulées.
+
+C'est dans ce contexte que s'inscrit le projet \textit{Graph Lab} : une plateforme interactive
+permettant de créer, manipuler et visualiser des graphes, tout en exécutant pas à pas les principaux
+algorithmes classiques. L'objectif est de rendre ces concepts accessibles grâce à une expérience
+visuelle et interactive.
+
+Ce rapport présente l'ensemble du travail réalisé par l'équipe, depuis la conception du système
+jusqu'à la livraison du produit final, en passant par la méthodologie adoptée et la répartition
+des tâches.
+
+
+\clearpage
+
+% ═══════════════════════════════════════════════════════════════════════════
+\chapter{Présentation du projet}
+% ═══════════════════════════════════════════════════════════════════════════
+
+\section{Problématique}
+
+Malgré leur importance en informatique et en mathématiques discrètes, les algorithmes de graphes restent souvent difficiles à appréhender. Cette difficulté s'explique par plusieurs facteurs :
+
+\begin{itemize}
+    \item Leur nature abstraite et théorique.
+    \item Le manque d'outils interactifs permettant leur manipulation dynamique.
+    \item Une compréhension souvent limitée aux explications statiques (cours, schémas).
+\end{itemize}
+
+Ces limitations rendent l'apprentissage et l'expérimentation des algorithmes de graphes peu intuitifs.
+
+\section{Objectifs}
+
+Dans ce cadre, ce projet vise à développer une plateforme interactive dédiée à l'expérimentation des algorithmes de graphes. Les principaux objectifs sont :
+
+\begin{itemize}
+    \item Permettre la création et la manipulation de graphes de manière simple et intuitive.
+    \item Exécuter et observer le fonctionnement des algorithmes classiques de graphes.
+    \item Améliorer l'apprentissage par l'interaction et la visualisation dynamique.
+\end{itemize}
+
+
+\section{Fonctionnalités de la plateforme}
+
+La plateforme développée permet :
+
+\begin{itemize}
+    \item La création de graphes orientés ou non orientés, pondérés ou non pondérés.
+    \item L'ajout et la suppression de sommets et d'arêtes via un éditeur visuel SVG ou une saisie matricielle.
+    \item Le chargement ou la génération de graphes pour les tests.
+    \item L'exécution des algorithmes suivants :
+    \begin{itemize}
+        \item Problème de coloration de graphes (greedy coloring)
+        \item Recherche de composantes connexes et fortement connexes
+        \item Plus courts chemins (Dijkstra, Bellman-Ford)
+        \item Arbres couvrants minimaux (Prim, Kruskal)
+        \item Flot maximum (Edmonds-Karp)
+        \item Recherche de circuits eulériens (Hierholzer)
+    \end{itemize}
+    \item La visualisation graphique des résultats ainsi que des étapes d'exécution des algorithmes (Algorithm Cinema).
+    \item Un mini-langage de requêtes interactif (\texttt{path}, \texttt{neighbors}, \texttt{degree}, \texttt{components}).
+    \item La gestion des cas limites (graphes vides, présence de cycles négatifs, poids négatifs, graphes non eulériens, etc.).
+\end{itemize}
+
+\section{Technologies utilisées}
+
+\begin{itemize}
+    \item \textbf{React.js} — interface utilisateur et gestion des interactions
+    \item \textbf{TypeScript} — structuration et sécurité statique du code
+    \item \textbf{D3.js} — visualisation dynamique des graphes sur canvas SVG
+    \item \textbf{Tailwind CSS} — design et mise en forme responsive
+    \item \textbf{Vite} — environnement de build et serveur de développement
+\end{itemize}
+
+\section{Architecture globale du système}
+
+La plateforme repose sur une architecture logique unifiée, sans séparation stricte entre
+frontend et backend. Elle est organisée en trois modules principaux fortement intégrés,
+permettant une exécution fluide et une visualisation en temps réel des résultats.
+
+\begin{itemize}
+    \item \textbf{Module Interface utilisateur} : gestion des interactions, création et
+          modification des graphes via un éditeur visuel SVG ou une saisie matricielle.
+    \item \textbf{Module Logique des graphes (\texttt{GraphUI})} : gestion des structures
+          de données (sommets, arêtes, poids, orientations) et du contrat de données
+          partagé entre les modules, géré par un reducer TypeScript centralisé.
+    \item \textbf{Module Algorithmes (\texttt{algorithmCinema})} : implémentation et exécution
+          des différents algorithmes de graphes avec génération des snapshots de visualisation.
+\end{itemize}
+
+\clearpage
+
+
+% ═══════════════════════════════════════════════════════════════════════════
+\chapter{Organisation de l'équipe et méthode de travail}
+% ═══════════════════════════════════════════════════════════════════════════
+
+\section{Composition et rôles}
+
+L'équipe de onze membres est organisée autour de trois pôles complémentaires, avec une cheffe
+de projet, des développeurs algorithmes, et deux équipes transversales couvrant l'interface et
+les tests.
+
+\textbf{Chef de projet} : Coordination générale, distribution des tâches, orchestration des
+sprints, documentation et intégration des modules.
+
+\textbf{Développeurs algorithmes} : Chaque développeur est responsable de l'implémentation
+complète d'un ou plusieurs algorithmes en TypeScript, incluant la génération des snapshots
+de visualisation.
+
+\textbf{Équipe front-end} : Rayen Mestiri et Yassine Drira forment le binôme principal en
+charge de l'interface utilisateur. Ils ont également contribué aux tests de leurs composants.
+
+\textbf{Équipe test} : Youssef Fathallah et Idriss Labibi constituent le binôme dédié à la
+validation. Ils ont également contribué à l'interface en développant des composants d'affichage
+des résultats. Les deux équipes ont donc collaboré sur l'interface et les tests.
+
+\section{Répartition détaillée des tâches}
+
+\renewcommand{\arraystretch}{1.4}
+\begin{longtable}{>{\bfseries}p{3.6cm} p{2.8cm} p{7.2cm}}
+\rowcolor{headerblue}
+\color{white}\textbf{Membre} & \color{white}\textbf{Rôle} & \color{white}\textbf{Tâches réalisées} \\
+\hline
+\endfirsthead
+\rowcolor{headerblue}
+\color{white}\textbf{Membre} & \color{white}\textbf{Rôle} & \color{white}\textbf{Tâches réalisées} \\
+\hline
+\endhead
+
+\rowcolor{teal100}
+Ben Boubaker Tasnime & Chef de projet &
+Création du dépôt GitHub, organisation des daily standups, distribution et suivi des tâches,
+intégration des modules, rédaction de la documentation et du contrat \texttt{GraphUI}. \\
+
+Omar Abdelkader & Dév. Algo &
+Algorithme de coloration gloutonne (\textit{greedy coloring}) : implémentation TypeScript, calcul du nombre chromatique, snapshots de colorisation, tests sur graphes bipartis et planaires. \\
+
+\rowcolor{teal100}
+Rihem Amri & Dév. Algo &
+Composantes connexes (BFS/Union-Find) et fortement connexes (Kosaraju et Tarjan) : implémentation, snapshots de découverte progressive, tests sur graphes orientés et non orientés. \\
+
+Nada Ben Taher & Dév. Algo &
+Dijkstra : implémentation avec file de priorité (min-heap), snapshots de relaxation des arêtes, gestion des graphes sans poids négatifs, tests de cohérence. \\
+
+\rowcolor{teal100}
+Nour El Houda Hasnaoui & Dév. Algo &
+Bellman-Ford : implémentation avec gestion des poids négatifs, détection des cycles négatifs, snapshots itération par itération, alerte visuelle en cas de cycle négatif. \\
+
+Guerriche Oussema & Dév. Algo &
+Algorithme de Prim (ACM) et flot maximum (Edmonds-Karp) : implémentation, snapshots d'évolution du flot et de l'arbre couvrant, gestion du graphe résiduel. \\
+
+\rowcolor{teal100}
+Rayen Mestiri & \textbf{Équipe front} / Dév. Algo &
+\textbf{Interface :} barre d'outils, contrôles de mode (visuel / matrice), panneau de contrat \texttt{GraphUI} en temps réel, saisie manuelle et import de graphes. \textbf{Algo :} Kruskal (ACM) — tri des arêtes, Union-Find avec compression de chemin et union par rang, snapshots accepté/rejeté. \textbf{Tests :} validation des composants front développés. \\
+
+AmenAllah Hajji & Dév. Algo &
+Hierholzer (circuits eulériens) : vérification des conditions d'Euléricité (degrés pairs / équilibre in/out), construction du circuit par combinaison de sous-circuits, snapshots pas à pas, messages d'erreur pour graphes non eulériens. \\
+
+\rowcolor{teal100}
+Drira Yassine & \textbf{Équipe front} &
+Menu interactif principal, sélection du type de graphe et de l'algorithme, panneau de résultats en temps réel, intégration avec le reducer \texttt{GraphUI}, mini-langage de requêtes en canvas (\texttt{path}, \texttt{neighbors}, \texttt{degree}, \texttt{components}). \textbf{Tests :} scénarios nominaux sur l'éditeur visuel et la saisie matricielle. \\
+
+Labibi Idris & \textbf{Équipe test} / Front &
+\textbf{Tests :} validation sur arbres, chemins linéaires $P_n$, cycles courts $C_3$--$C_5$ et graphes complets $K_n$ ($n \leq 6$). \textbf{Front :} composants d'affichage des résultats algorithmiques et du panneau de lecture des snapshots. \\
+
+\rowcolor{teal100}
+Fathallah Youssef & \textbf{Équipe test} / Front &
+\textbf{Tests :} cas limites — graphe vide, graphe non connexe, poids négatifs, cycles négatifs, graphe sans circuit eulérien, boucles et arêtes multiples. \textbf{Front :} composants d'affichage des alertes et messages d'erreur dans l'interface. \\
+
+\end{longtable}
+
+\section{Méthode de travail}
+
+L'équipe a adopté une organisation agile avec sprints hebdomadaires, chacun correspondant à un livrable précis. Les \textbf{daily standups} (10--15 min) ont permis de synchroniser les avancées, détecter les dépendances inter-modules (ex. : l'interface ne peut afficher les étapes qu'après la génération des snapshots par les modules algo) et résoudre rapidement les blocages.
+
+La collaboration entre l'équipe front (Rayen, Yassine) et l'équipe test (Youssef, Idriss) a été particulièrement productive : les testeurs ont identifié des bugs d'affichage et contribué à des composants UI, tandis que les développeurs front ont participé à la rédaction de cas de test pour leurs propres composants.
+
+La méthodologie suit cinq phases séquentielles :
+
+\begin{enumerate}[leftmargin=1.5cm]
+  \item \textbf{Conception} : définition du contrat \texttt{GraphUI}, interfaces TypeScript, architecture des modules.
+  \item \textbf{Développement parallèle} : chaque développeur travaille indépendamment en respectant le contrat commun.
+  \item \textbf{Intégration} : fusion des branches par la cheffe de projet, vérification de la cohérence.
+  \item \textbf{Tests} : validation sur cas nominaux et cas limites par les deux équipes.
+  \item \textbf{Livraison} : documentation finale et démo de la plateforme.
+\end{enumerate}
+
+\textbf{Outils de collaboration :} GitHub (versionnage, branches par fonctionnalité, pull requests), messagerie instantanée (échanges rapides), npm/Node.js/Vite (build partagé).
+
+\clearpage
+
+
+% ═══════════════════════════════════════════════════════════════════════════
+\chapter{Travail réalisé et produit livrable}
+
+ 
+
+\section{Conception du système}
+
+\subsection{Contrat de données : la classe \texttt{GraphUI}}
+
+Le cœur de l'architecture repose sur un contrat de données unique, la classe \texttt{GraphUI},
+qui constitue la source de vérité partagée entre tous les modules. Sa définition TypeScript est
+la suivante :
+
+\begin{verbatim}
+class GraphUI {
+  nodes: number[]
+  edges: Array<{ from: number; to: number; weight: number }>
+  directed: boolean
+  weighted: boolean
+  positions?: Record<number, { x: number; y: number }>
+}
+\end{verbatim}
+
+Ce contrat garantit que l'interface produit exactement le format attendu par la couche
+algorithmique, sans conversion intermédiaire. La prévisualisation JSON de ce contrat est
+affichée en temps réel dans le panneau droit de l'application.
+
+\subsection{Choix des structures de données}
+
+Les choix de structures de données ont été guidés par deux impératifs : la performance
+algorithmique et la compatibilité avec la visualisation en temps réel.
+
+\begin{itemize}
+    \item \textbf{Listes d'adjacence} : utilisées pour la majorité des algorithmes de parcours
+          (BFS, DFS, composantes connexes, Euler) car elles offrent une complexité spatiale
+          proportionnelle au nombre d'arêtes.
+    \item \textbf{Matrice d'adjacence} : disponible via le module de saisie matricielle,
+          particulièrement adaptée aux graphes denses et à la détection rapide d'arêtes.
+    \item \textbf{Union-Find (structure disjointe)} : utilisée par Kruskal et la détection
+          de composantes connexes pour des opérations quasi-linéaires.
+    \item \textbf{File de priorité (min-heap)} : utilisée par Dijkstra et Prim pour
+          l'extraction efficace du sommet de poids minimal.
+    \item \textbf{Reducer TypeScript centralisé} : l'état canonique du graphe est géré par
+          un reducer Redux-like, garantissant l'immuabilité et la traçabilité des mutations
+          avec un historique complet (undo/redo/jump).
+\end{itemize}
+
+ 
+% ─────────────────────────────────────────────────────────────────────────
+\section{Interface utilisateur}
+% ─────────────────────────────────────────────────────────────────────────
+ 
+\subsection{Éditeur visuel (canvas SVG — D3.js)}
+ 
+L'éditeur SVG, développé principalement par l'équipe front, gère les interactions suivantes :
+ajout de nœuds par clic, déplacement par glisser-déposer, création d'arêtes entre deux sommets,
+suppression, et affichage de \textit{diff ghosts} (états précédents en transparence) lors du
+time-travel. Un scrubber de timeline permet de naviguer dans l'historique des mutations
+(\texttt{UNDO} / \texttt{REDO} / \texttt{JUMP\_TO}).
+ 
+\subsection{Saisie matricielle}
+ 
+Le module matriciel permet de redimensionner le nombre de sommets, d'éditer les cellules
+de la matrice d'adjacence et d'appliquer la matrice au graphe, avec synchronisation
+automatique de l'éditeur visuel. Les deux modes partagent le même état \texttt{GraphUI}.
+ 
+\subsection{Algorithm Cinema et mini-langage de requêtes}
+
+Le module \textit{Algorithm Cinema} (fichier \texttt{algorithmCinema.ts}) permet une visualisation
+pédagogique des algorithmes :
+\begin{itemize}
+    \item \textbf{Lecture / Pause / Étape suivante / Rembobinage} pour naviguer dans les snapshots.
+    \item \textbf{Scrubber} pour sauter directement à n'importe quelle étape de l'exécution.
+    \item Mise en évidence visuelle des arêtes et sommets actifs à chaque étape.
+\end{itemize}
+
+En complément, un \textbf{mini-langage de requêtes} est disponible directement en canvas :
+\texttt{path 1 5} (chemin entre deux sommets), \texttt{neighbors 3} (voisins d'un nœud),
+\texttt{degree 4} (degré d'un sommet), \texttt{components} (liste des composantes connexes).
+
+ 
+
+% ─────────────────────────────────────────────────────────────────────────
+\section{Implémentation des algorithmes}
+% ─────────────────────────────────────────────────────────────────────────
+
+Un graphe est défini par $G = (V, E)$, où $V$ représente l'ensemble des sommets et $E$ l'ensemble des arêtes reliant ces sommets.
+
+% ─────────────────────────────────────────────────────────────────────────
+\subsection{Plus courts chemins}
+
+\textbf{Dijkstra} — \textit{Nada Ben Taher.}
+
+Calcule les plus courts chemins depuis une source dans un graphe à poids \emph{strictement positifs}.
+L'algorithme maintient une \textbf{file de priorité (min-heap)} et extrait à chaque étape le sommet
+de distance minimale provisoire. Pour chaque voisin de ce sommet, il effectue une \textbf{relaxation} :
+si le chemin passant par le sommet courant est plus court que la distance connue, la distance est mise
+à jour. Ce processus se répète jusqu'à ce que tous les sommets atteignables soient traités. Chaque
+relaxation génère un snapshot pour la visualisation pas à pas. Complexité : $O((V+E)\log V)$.
+
+\medskip
+\textbf{Bellman-Ford} — \textit{Nour El Houda Hasnaoui.}
+
+Calcule les plus courts chemins dans les graphes \emph{avec poids négatifs}. Il effectue $|V|-1$
+itérations de mise à jour sur la totalité des arêtes. Une $|V|$-ème itération permet de détecter
+l'existence d'un \textbf{cycle de poids négatif} : si une distance peut encore être améliorée, un
+cycle négatif est présent. Un snapshot est généré à chaque itération, avec une alerte visuelle
+indiquant l'arête incriminée en cas de cycle. Complexité : $O(V \cdot E)$.
+ 
+\subsection{Arbres couvrants minimaux}
+
+\textbf{Prim} — \textit{Guerriche Oussema.}
+
+Construit progressivement un arbre couvrant minimal à partir d'un sommet initial arbitraire.
+L'algorithme maintient une \textbf{file de priorité} contenant les arêtes frontières reliant
+l'arbre courant aux sommets non encore visités. À chaque étape, l'arête de poids minimal est
+sélectionnée et son sommet cible est intégré à l'arbre. Un snapshot est généré après chaque
+ajout. Complexité : $O((V+E)\log V)$.
+
+\medskip
+\textbf{Kruskal} — \textit{Rayen Mestiri.}
+
+Commence par trier toutes les arêtes par poids croissant. Chaque arête est ensuite examinée
+à l'aide de la structure \textbf{Union-Find} (avec compression de chemin et union par rang).
+Si les deux extrémités appartiennent à des composantes différentes, l'arête est ajoutée à
+l'arbre couvrant et un snapshot \textit{accepté} est généré. Sinon, l'arête est rejetée
+(elle formerait un cycle) et un snapshot \textit{rejeté} est affiché. Complexité : $O(E \log E)$.
+
+% ─────────────────────────────────────────────────────────────────────────
+
+\subsection{Flot maximum}
+
+\textbf{Edmonds-Karp} — \textit{Guerriche Oussema.}
+
+Variante de Ford-Fulkerson reposant sur des recherches successives de \textbf{chemins augmentants}
+dans le graphe résiduel à l'aide d'un BFS (garantissant le plus court chemin en nombre d'arêtes).
+À chaque itération, le flot est augmenté selon la capacité résiduelle minimale du chemin trouvé,
+puis les capacités résiduelles sont mises à jour (sens aller et retour). Un snapshot visualise
+l'état du graphe résiduel et la valeur courante du flot. L'algorithme se termine lorsqu'aucun
+chemin augmentant n'existe entre la source et le puits (coupe minimale atteinte).
+Complexité : $O(VE^2)$.
+
+% ─────────────────────────────────────────────────────────────────────────
+
+\subsection{Composantes connexes et fortement connexes}
+
+\textbf{Composantes connexes} — \textit{Rihem Amri.}
+
+Sur un graphe non orienté, un parcours BFS ou DFS est lancé depuis chaque sommet non encore visité.
+Chaque parcours identifie une composante distincte, colorée différemment dans la visualisation.
+Une alternative utilise la structure \textbf{Union-Find} pour fusionner progressivement les sommets
+reliés par une arête. La requête \texttt{components} du mini-langage exploite ce module.
+
+\medskip
+\textbf{Composantes fortement connexes} — \textit{Rihem Amri.}
+
+Deux approches sont implémentées sur graphe orienté. \textit{Kosaraju} effectue d'abord un DFS
+complet pour ordonner les sommets selon leur temps de fin, puis relance un DFS sur le graphe
+transposé dans l'ordre inverse. \textit{Tarjan} repose sur un DFS unique utilisant une pile
+et des indices \textit{low-link} pour identifier les racines de composantes fortement connexes
+sans transposition du graphe. Dans les deux cas, des snapshots illustrent la découverte progressive.
+Complexité : $O(V+E)$.
+
+% ─────────────────────────────────────────────────────────────────────────
+
+\subsection{Coloration de graphes}
+
+\textbf{Greedy coloring} — \textit{Omar Abdelkader.}
+
+Les sommets sont traités dans un ordre fixe (ordre d'insertion). Pour chacun, la plus petite
+couleur disponible — c'est-à-dire non utilisée par ses voisins déjà colorés — est attribuée.
+Le résultat fournit une coloration valide (aucune arête ne relie deux sommets de même couleur)
+et le \textbf{nombre chromatique expérimental} est affiché dans l'interface. L'algorithme est
+validé sur des graphes bipartis (2 couleurs suffisent), des graphes planaires (4 couleurs au
+plus) et des graphes complets $K_n$ ($n$ couleurs nécessaires). Complexité : $O(V + E)$.
+
+% ─────────────────────────────────────────────────────────────────────────
+
+\subsection{Circuits eulériens}
+
+\textbf{Hierholzer} — \textit{AmenAllah Hajji.}
+
+Avant exécution, le graphe est vérifié pour les \textbf{conditions d'Euléricité} :
+dans un graphe non orienté, tous les sommets doivent avoir un degré pair ;
+dans un graphe orienté, il faut $\deg^+(v) = \deg^-(v)$ pour chaque sommet.
+Si la condition n'est pas satisfaite, les sommets fautifs sont listés et l'exécution est stoppée
+avec un message explicatif.
+
+Sinon, l'algorithme construit le circuit en combinant des sous-circuits successifs.
+Il démarre depuis un sommet source, parcourt un premier cycle en explorant des arêtes non visitées,
+puis insère progressivement d'autres cycles aux sommets disposant encore d'arêtes non visitées.
+Un snapshot est généré à chaque extension du circuit. Complexité : $O(E)$.
+
+% ─────────────────────────────────────────────────────────────────────────
+\section*{Workflow interface $\rightarrow$ algorithmes}
+% ─────────────────────────────────────────────────────────────────────────
+ 
+
+Le workflow de données suit un flux unidirectionnel :
+
+\begin{enumerate}
+    \item L'utilisateur crée ou modifie le graphe via l'éditeur visuel ou la matrice.
+    \item Chaque action est dispatchée au reducer qui met à jour l'état \texttt{GraphUI}.
+    \item L'utilisateur sélectionne un algorithme dans le menu (ou saisit une requête en canvas).
+    \item Le module \texttt{algorithmCinema} reçoit l'objet \texttt{GraphUI} et produit une séquence
+          de snapshots (états intermédiaires).
+    \item Le module \textit{Algorithm Cinema} rejoue ces snapshots dans le canvas SVG,
+          permettant une visualisation pas à pas avec contrôles play/pause/step/rewind/scrub.
+\end{enumerate}
+
+\bigskip
+ 
+ 
+% ─────────────────────────────────────────────────────────────────────────
+\section{Tests et validation}
+% ─────────────────────────────────────────────────────────────────────────
+ 
+\subsection{Tests nominaux — Labibi Idris et Drira Yassine}
+ 
+Les algorithmes ont été validés sur des structures calculables à la main. Le tableau
+suivant résume les cas de test nominaux utilisés, avec des exemples concrets de graphes.
+
+\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{>{\bfseries}p{3.2cm} p{4.8cm} p{5.2cm}}
+\rowcolor{headerblue}
+\color{white}\textbf{Algorithme} & \color{white}\textbf{Graphe de test} & \color{white}\textbf{Résultat attendu et vérifié} \\
+\hline
+\endfirsthead
+\rowcolor{headerblue}
+\color{white}\textbf{Algorithme} & \color{white}\textbf{Graphe de test} & \color{white}\textbf{Résultat attendu et vérifié} \\
+\hline
+\endhead
+
+\rowcolor{teal100}
+Dijkstra &
+Chemin linéaire $P_5$ : $1\xrightarrow{2}2\xrightarrow{3}3\xrightarrow{1}4\xrightarrow{4}5$, source = 1 &
+Distances : $d(1,2)=2$, $d(1,3)=5$, $d(1,4)=6$, $d(1,5)=10$. \\
+
+Dijkstra &
+$K_4$ avec poids : arêtes $(1,2)=1$, $(1,3)=4$, $(1,4)=3$, $(2,3)=2$, $(2,4)=5$, $(3,4)=1)$ ; source = 1 &
+Distances : $d(2)=1$, $d(3)=3$, $d(4)=3$. Chemin optimal $1\to3$ passe par $1\to2\to3$. \\
+
+\rowcolor{teal100}
+Bellman-Ford &
+Graphe orienté à 4 sommets : $(1,2,-1)$, $(1,3,4)$, $(2,3,3)$, $(2,4,2)$, $(3,4,5)$, source = 1 &
+Distances : $d(2)=-1$, $d(3)=2$, $d(4)=1$ (chemin $1\to2\to4$). \\
+
+Prim / Kruskal &
+Graphe non orienté $K_4$ pondéré : arêtes $(1,2)=4$, $(1,3)=2$, $(2,3)=1$, $(2,4)=5$, $(3,4)=8)$ &
+ACM = $\{(2,3), (1,3), (2,4)\}$, poids total = 8. \\
+
+\rowcolor{teal100}
+Kruskal &
+Cycle $C_5$ : 5 sommets en anneau, poids $1,2,3,4,5$ &
+ACM : 4 arêtes acceptées (poids les plus faibles), l'arête de poids 5 rejetée (cycle). \\
+
+Edmonds-Karp &
+Réseau de flot à 4 sommets : source $s=1$, puits $t=4$, capacités $(1,2)=3$, $(1,3)=2$, $(2,4)=2$, $(3,4)=3$, $(2,3)=1)$ &
+Flot maximum = 4 (deux chemins augmentants : $s\to1\to4$ et $s\to2\to4$). \\
+
+\rowcolor{teal100}
+Composantes connexes &
+Graphe à 6 sommets, deux composantes : $\{1,2,3\}$ en triangle et $\{4,5,6\}$ en triangle &
+Deux composantes identifiées, colorées distinctement. \\
+
+CFC (Kosaraju / Tarjan) &
+Graphe orienté : $1\to2\to3\to1$ (cycle) et $3\to4$ (pont vers un sommet isolé) &
+Deux CFC : $\{1,2,3\}$ et $\{4\}$. \\
+
+\rowcolor{teal100}
+Greedy coloring &
+Cycle $C_4$ (graphe biparti) : $1-2-3-4-1$ &
+2 couleurs suffisent : $\{1,3\}$ couleur A, $\{2,4\}$ couleur B. \\
+
+Greedy coloring &
+$K_4$ complet (4 sommets tous reliés) &
+4 couleurs nécessaires, une par sommet. \\
+
+\rowcolor{teal100}
+Hierholzer &
+Graphe non orienté : cycle $C_4$ (tous degrés = 2) &
+Circuit eulérien trouvé : $1\to2\to3\to4\to1$. \\
+
+Hierholzer &
+Graphe orienté à 3 sommets : $1\to2\to3\to1$ ($\deg^+=\deg^-=1$ pour chacun) &
+Circuit eulérien orienté : $1\to2\to3\to1$. \\
+
+\end{longtable}
+
+Des graphes plus grands générés aléatoirement ($n = 20$--$50$ sommets) ont également
+été utilisés pour évaluer les performances et la robustesse de la visualisation.
+ 
+\subsection{Tests des cas limites — Fathallah Youssef et Rayen Mestiri}
+ 
+\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{>{\bfseries}p{4cm} p{9.5cm}}
+\rowcolor{headerblue}
+\color{white}\textbf{Cas limite} & \color{white}\textbf{Comportement attendu et vérifié} \\
+\hline
+\endfirsthead
+\rowcolor{headerblue}
+\color{white}\textbf{Cas limite} & \color{white}\textbf{Comportement attendu et vérifié} \\
+\hline
+\endhead
+ 
+\rowcolor{teal100}
+Graphe vide ($|V|=0$) &
+Tous les algorithmes retournent un résultat vide ou affichent un message explicatif sans lever d'exception. \\
+ 
+Graphe à 1 sommet &
+Dijkstra et Bellman-Ford retournent une distance nulle pour la source ; Prim et Kruskal retournent un arbre vide ; Hierholzer confirme l'absence de circuit. \\
+ 
+\rowcolor{teal100}
+Graphe non connexe &
+Dijkstra et Prim assignent $+\infty$ aux sommets inaccessibles et le signalent dans le panneau de résultats. Les composantes connexes identifient correctement chaque sous-graphe isolé. \\
+ 
+Poids négatifs (Dijkstra) &
+Dijkstra refuse l'exécution et affiche un message redirigeant vers Bellman-Ford. Bellman-Ford traite le graphe correctement, y compris avec plusieurs arêtes de poids négatif. \\
+ 
+\rowcolor{teal100}
+Cycle négatif &
+Ex. : graphe orienté $1\xrightarrow{1}2\xrightarrow{-3}3\xrightarrow{1}1$ (cycle de poids $-1$). Bellman-Ford détecte le cycle lors de la $|V|$-ème itération et affiche une alerte avec l'arête incriminée. \\
+ 
+Graphe non eulérien (non orienté) &
+Ex. : graphe en étoile $K_{1,3}$ (le centre a degré 3). Hierholzer liste les sommets de degré impair et stoppe l'exécution avec un message explicatif. \\
+ 
+\rowcolor{teal100}
+Graphe non eulérien (orienté) &
+Ex. : graphe $1\to2$, $1\to3$, $2\to3$ ($\deg^+(1)=2 \neq \deg^-(1)=0$). Les sommets déséquilibrés sont signalés. \\
+ 
+Boucles et multi-arêtes &
+Les structures Union-Find et les listes d'adjacence gèrent correctement les arêtes multiples et les boucles sans corruption de l'état du graphe. \\
+ 
+\end{longtable}
+ 
+% ─────────────────────────────────────────────────────────────────────────
+\section{Lancement de la plateforme}
+% ─────────────────────────────────────────────────────────────────────────
+ 
+\begin{verbatim}
+git clone https://github.com/tasnime-bbker/GraphLab
+cd GraphLab
+npm install
+npm run dev        # http://localhost:5173  (Vite dev server)
+npm run build      # build de production (tsc + vite build)
+\end{verbatim}
+ 
+\clearpage
+
+
+\clearpage
+
+
+% ─── CONCLUSION ──────────────────────────────────────────────────────────────
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+
+\section*{Bilan}
+
+Le projet Graph Lab a abouti à la livraison d'une plateforme fonctionnelle et interactive
+permettant de visualiser et comprendre les principaux algorithmes de graphes. L'ensemble
+des fonctionnalités planifiées a été implémenté, testé et intégré dans un produit cohérent.
+La collaboration entre les onze membres de l'équipe, organisée autour d'un dépôt GitHub
+commun et de daily standups réguliers, a permis de maintenir un rythme de développement
+soutenu tout en limitant les conflits d'intégration. La transversalité des équipes front
+et test a notamment renforcé la qualité du produit final.
+
+\section*{Difficultés rencontrées}
+
+\begin{itemize}
+    \item La synchronisation entre l'éditeur visuel SVG et la saisie matricielle a nécessité
+          une conception rigoureuse du reducer centralisé pour éviter les incohérences d'état.
+    \item La génération des snapshots de visualisation a dû être coordonnée entre les développeurs
+          algorithmes et l'équipe front, créant une dépendance inter-modules à gérer prudemment.
+    \item La détection correcte des cycles négatifs dans Bellman-Ford a requis une attention
+          particulière à la condition de terminaison et à l'identification précise de l'arête coupable.
+\end{itemize}
+
+\section*{Améliorations futures}
+
+\begin{itemize}
+    \item Mode collaboratif en temps réel (plusieurs utilisateurs sur le même graphe).
+    \item Ajout d'un mode quiz pédagogique permettant à l'utilisateur de prédire la prochaine étape.
+\end{itemize}
+
+\end{document}
