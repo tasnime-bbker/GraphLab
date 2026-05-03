@@ -307,10 +307,12 @@ function EdgeItem({
             width={24}
             height={20}
             rx={4}
-            fill="#0ea5e9"
-            stroke={isSelected ? "#38bdf8" : "rgba(255,255,255,0.1)"}
+            fill={colorScheme === 'dark' ? "#0ea5e9" : "#ffffff"}
+            stroke={isSelected 
+              ? (colorScheme === 'dark' ? "#38bdf8" : "#0284c7") 
+              : (colorScheme === 'dark' ? "rgba(255,255,255,0.1)" : "rgba(14, 165, 233, 0.2)")}
             strokeWidth={1.5}
-            className="transition-all duration-300"
+            className="transition-all duration-300 shadow-sm"
           />
           {editingEdgeId === edge.id ? (
             <foreignObject
@@ -323,7 +325,11 @@ function EdgeItem({
               <input
                 autoFocus
                 value={weightDraft}
-                className="h-7 w-14 rounded bg-slate-900 border border-blue-500 px-1 text-center text-xs font-semibold outline-none focus:ring-1 focus:ring-blue-400 shadow-[0_0_10px_rgba(14,165,233,0.4)]"
+                className={`h-7 w-14 rounded border px-1 text-center text-xs font-semibold outline-none focus:ring-1 transition-all ${
+                  colorScheme === 'dark' 
+                    ? 'bg-slate-900 border-blue-500 focus:ring-blue-400 shadow-[0_0_10px_rgba(14,165,233,0.4)]' 
+                    : 'bg-white border-blue-400 focus:ring-blue-500 shadow-[0_2px_8px_rgba(14,165,233,0.15)]'
+                }`}
                 style={{ color: 'var(--app-text)' }}
                 onChange={(event) => {
                   setWeightDraft(event.currentTarget.value)
@@ -347,7 +353,7 @@ function EdgeItem({
               y={geometry.labelY + 4}
               textAnchor="middle"
               className="pointer-events-none font-mono text-[11px] font-bold"
-              style={{ fill: '#ffffff' }}
+              style={{ fill: colorScheme === 'dark' ? '#ffffff' : '#0369a1' }}
             >
               {edge.weight}
             </text>
@@ -1211,7 +1217,7 @@ export function GraphCanvas() {
                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                 <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
               </svg>
-              {showOriginalContext ? 'Ghosting: ON' : 'Ghosting: OFF'}
+              {t('canvas.ghosting')}{showOriginalContext ? t('canvas.on') : t('canvas.off')}
             </button>
           </div>
         )}
@@ -1225,7 +1231,7 @@ export function GraphCanvas() {
           playing={cinemaPlaying}
           stepCount={cinemaProgram?.steps.length ?? 0}
           currentIndex={cinemaStepIndex}
-          narration={currentCinemaStep?.narration ?? 'Build steps to start playback.'}
+          narration={currentCinemaStep?.narration || t('cinema.narration')}
           onAlgorithmChange={(value) => {
             setCinemaAlgorithm(value)
             setCinemaProgram(null)
@@ -2001,6 +2007,21 @@ export function GraphCanvas() {
           hasSelection={interaction.selectedNodeId !== null || interaction.selectedEdgeId !== null}
           isCommandPaletteOpen={isCommandPaletteOpen}
           zoomLevel={transform.k}
+          onExportJson={() => {
+            const data = JSON.stringify(graph, null, 2)
+            navigator.clipboard.writeText(data)
+            alert(t('toolbar.jsonCopied'))
+          }}
+          onCopyAdjList={() => {
+            const list = graph.nodes.map(nodeId => {
+              const neighbors = graph.edges
+                .filter(e => e.from === nodeId)
+                .map(e => `${e.to}${graph.weighted ? `(${e.weight})` : ''}`)
+              return `${nodeId}: ${neighbors.join(', ')}`
+            }).join('\n')
+            navigator.clipboard.writeText(list)
+            alert(t('toolbar.adjListCopied'))
+          }}
         />
       {isScreenshotMode && (
         <ScreenshotRegionSelector

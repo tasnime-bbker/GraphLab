@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useI18n } from '../../../shared/context/I18nContext'
 import './CanvasToolbar.css'
 
 interface CanvasToolbarProps {
@@ -17,6 +18,8 @@ interface CanvasToolbarProps {
   hasSelection: boolean
   isCommandPaletteOpen: boolean
   zoomLevel: number
+  onExportJson?: () => void
+  onCopyAdjList?: () => void
 }
 
 export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
@@ -35,7 +38,10 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   hasSelection,
   isCommandPaletteOpen,
   zoomLevel,
+  onExportJson,
+  onCopyAdjList,
 }) => {
+  const { t } = useI18n()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [searchError, setSearchError] = useState(false)
@@ -88,7 +94,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
             <input
               ref={searchInputRef}
               className="toolbar-search-input"
-              placeholder="Search node ID..."
+              placeholder={t('toolbar.searchPlaceholder')}
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               onKeyDown={(e) => {
@@ -104,7 +110,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         {/* GROUP 1 — Search & Command */}
         <button
           className={`toolbar-btn ${isSearchOpen ? 'active' : ''}`}
-          data-tooltip="Find Node · Ctrl+F"
+          data-tooltip={t('toolbar.tooltip.findNode')}
           onClick={() => setIsSearchOpen(!isSearchOpen)}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -114,7 +120,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         </button>
         <button
           className={`toolbar-btn ${isCommandPaletteOpen ? 'active' : ''}`}
-          data-tooltip="Command Palette · Ctrl+K"
+          data-tooltip={t('toolbar.tooltip.commandPalette')}
           onClick={onOpenCommandPalette}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -128,7 +134,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         {/* GROUP 2 — History */}
         <button
           className="toolbar-btn"
-          data-tooltip="Undo · Ctrl+Z"
+          data-tooltip={t('toolbar.tooltip.undo')}
           onClick={onUndo}
           disabled={!canUndo}
         >
@@ -139,7 +145,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         </button>
         <button
           className="toolbar-btn"
-          data-tooltip="Redo · Ctrl+Y"
+          data-tooltip={t('toolbar.tooltip.redo')}
           onClick={onRedo}
           disabled={!canRedo}
         >
@@ -154,7 +160,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         {/* GROUP 3 — Zoom */}
         <button
           className="toolbar-btn"
-          data-tooltip="Zoom Out · Ctrl+−"
+          data-tooltip={t('toolbar.tooltip.zoomOut')}
           onClick={onZoomOut}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -172,7 +178,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         </div>
         <button
           className="toolbar-btn"
-          data-tooltip="Zoom In · Ctrl++"
+          data-tooltip={t('toolbar.tooltip.zoomIn')}
           onClick={onZoomIn}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -188,7 +194,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         {/* GROUP 4 — Canvas Actions */}
         <button
           className={`toolbar-btn ${isSpinning ? 'spin-animation' : ''}`}
-          data-tooltip="Reset View · R"
+          data-tooltip={t('toolbar.tooltip.resetView')}
           onClick={triggerReset}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -198,7 +204,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         </button>
         <button
           className="toolbar-btn"
-          data-tooltip="Add Node · A"
+          data-tooltip={t('toolbar.tooltip.addNode')}
           onClick={onAddNode}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -209,7 +215,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         </button>
         <button
           className="toolbar-btn danger"
-          data-tooltip="Delete Selected · Del"
+          data-tooltip={t('toolbar.tooltip.deleteSelected')}
           onClick={onDeleteSelected}
           disabled={!hasSelection}
         >
@@ -226,7 +232,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         {/* GROUP 5 — Utilities */}
         <button
           className="toolbar-btn"
-          data-tooltip="Screenshot Canvas · Ctrl+Shift+S"
+          data-tooltip={t('toolbar.tooltip.screenshot')}
           onClick={triggerScreenshot}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -234,6 +240,37 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
             <circle cx="12" cy="13" r="4" />
           </svg>
         </button>
+
+        {onExportJson && (
+          <button
+            className="toolbar-btn"
+            data-tooltip={t('toolbar.tooltip.copyJson')}
+            onClick={onExportJson}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+              <path d="M9 14l2 2 4-4" />
+            </svg>
+          </button>
+        )}
+
+        {onCopyAdjList && (
+          <button
+            className="toolbar-btn"
+            data-tooltip={t('toolbar.tooltip.copyAdjList')}
+            onClick={onCopyAdjList}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+               <line x1="8" y1="6" x2="21" y2="6" />
+               <line x1="8" y1="12" x2="21" y2="12" />
+               <line x1="8" y1="18" x2="21" y2="18" />
+               <line x1="3" y1="6" x2="3.01" y2="6" />
+               <line x1="3" y1="12" x2="3.01" y2="12" />
+               <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+          </button>
+        )}
       </div>
     </>
   )

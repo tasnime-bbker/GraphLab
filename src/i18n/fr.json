@@ -14,7 +14,10 @@
     "directed": "Orienté",
     "undirected": "Non orienté",
     "cancelDraft": "Annuler le brouillon (Échap)",
-    "edge": "Arête"
+    "edge": "Arête",
+    "ghosting": "Effet fantôme : ",
+    "on": "ACTIVÉ",
+    "off": "DÉSACTIVÉ"
   },
   "mode": {
     "label": "Mode de saisie du graphe",
@@ -31,7 +34,8 @@
     "language": "Langue",
     "autoLayout": "Disposition automatique",
     "nodes": "Nœuds",
-    "edges": "Arêtes"
+    "edges": "Arêtes",
+    "complexity": "Complexité"
   },
   "policy": {
     "positive": "Positif (> 0)",
@@ -44,19 +48,40 @@
     "copy": "Copier",
     "copied": "Copié !",
     "copyFailed": "Échec de copie",
+    "jsonCopied": "Graphe copié en JSON dans le presse-papiers !",
+    "adjListCopied": "Liste d'adjacence copiée dans le presse-papiers !",
     "png": "PNG",
-    "clear": "Réinitialiser"
+    "clear": "Réinitialiser",
+    "searchPlaceholder": "Chercher ID nœud...",
+    "tooltip": {
+      "findNode": "Trouver un nœud · Ctrl+F",
+      "commandPalette": "Palette de commandes · Ctrl+K",
+      "undo": "Annuler · Ctrl+Z",
+      "redo": "Rétablir · Ctrl+Y",
+      "zoomOut": "Zoom arrière · Ctrl+−",
+      "zoomIn": "Zoom avant · Ctrl++",
+      "resetView": "Réinitialiser la vue · R",
+      "addNode": "Ajouter un nœud · A",
+      "deleteSelected": "Supprimer la sélection · Suppr",
+      "screenshot": "Capture d'écran · Ctrl+Maj+S",
+      "copyJson": "Copier JSON",
+      "copyAdjList": "Copier liste d'adjacence"
+    }
   },
   "contract": {
     "title": "Sortie GraphUI",
-    "subtitle": "Représentation JSON en direct"
+    "subtitle": "Représentation JSON en direct",
+    "edit": "Modifier le code"
   },
   "history": {
     "title": "Historique",
     "step": "Étape",
     "undo": "Annuler",
     "redo": "Rétablir",
-    "jump": "Aller à l'étape"
+    "jump": "Aller à",
+    "current": "Actuel",
+    "cancel": "Annuler",
+    "summary": "Résumé"
   },
   "metrics": {
     "title": "Métriques du graphe",
@@ -70,7 +95,9 @@
     "regular": "Régulier",
     "bipartite": "Biparti",
     "planar": "Planaire",
-    "empty": "Graphe vide"
+    "empty": "Graphe vide",
+    "tree": "Arbre",
+    "forest": "Forêt"
   },
   "matrix": {
     "title": "Matrice d'adjacence",
@@ -100,19 +127,45 @@
     "bellman": "Bellman",
     "bellmanFord": "Bellman-Ford",
     "welshPowell": "Welsh-Powell",
-    "euler": "Chemins / circuits eulériens"
+    "euler": "Chemins / circuits eulériens",
+    "learn": "Apprendre : ",
+    "video": "Vidéo",
+    "howItWorks": "Comment ça marche ?",
+    "useCase": "Cas d'usage",
+    "stepByStep": "Explication Pas-à-Pas",
+    "status": {
+      "ready": "Prêt",
+      "added": "Ajouté",
+      "rejected": "Rejeté",
+      "done": "Terminé",
+      "explore": "Explore",
+      "init": "Init",
+      "back": "Avance"
+    }
   },
   "help": {
-    "title": "Guide rapide",
-    "hint": "Survolez pour obtenir de l'aide",
-    "summary": "Raccourcis fréquents et actions rapides.",
-    "leftClick": "Clic gauche (ou N) : ajouter un nœud",
-    "delete": "Clic droit sur un nœud / double-clic sur une arête : supprimer",
-    "shortcuts": "D bascule orienté, W bascule pondéré, Ctrl+Z/Y annuler/rétablir",
-    "autoLayout": "Disposition automatique",
-    "openMatrix": "Ouvrir le mode matrice",
-    "openVisual": "Ouvrir le mode visuel",
-    "fullGuide": "Lire le guide complet"
+    "title": "Guide & Raccourcis",
+    "summary": "Raccourcis & Navigation",
+    "fullGuide": "Lire le guide complet",
+    "shortcuts": {
+      "title": "Raccourcis Clavier",
+      "delete": "Supprimer l'élément sélectionné",
+      "escape": "Désélectionner / Annuler l'action",
+      "pan": "Déplacer la vue (Mode Pan alternatif)",
+      "undo": "Annuler (Undo)",
+      "redo": "Rétablir (Redo)"
+    },
+    "mouse": {
+      "title": "Manipulation (Souris)",
+      "leftClick": "Clic gauche : Créer ou sélectionner un nœud",
+      "drag": "Clic + Glisser (Nœud à Nœud) : Créer une arête",
+      "rightDrag": "Clic droit + Glisser : Déplacer la vue (Pan)",
+      "wheel": "Molette : Zoom avant / arrière"
+    },
+    "tip": {
+      "title": "Astuce Pro :",
+      "text": "Utilisez le panneau \"Cinéma des Algorithmes\" en haut à droite pour simuler et apprendre le comportement des graphes étape par étape !"
+    }
   },
   "palette": {
     "placeholder": "Tapez une commande...",
@@ -121,6 +174,11 @@
   "lang": {
     "en": "Anglais",
     "fr": "Français"
+  },
+  "team": {
+    "class": "Classe",
+    "professor": "Professeur",
+    "members": "Membres de l'équipe"
   }
 }
 
