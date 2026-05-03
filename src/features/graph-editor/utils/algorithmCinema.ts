@@ -1,7 +1,7 @@
 import type { GraphEdge, GraphState, NodeId } from '../../graph/model/types'
-import { findEulerianPathOrCircuit, buildEulerianTraceReport } from '../../graph/utils/graphAnalysis'
+import { findEulerianPathOrCircuit, buildEulerianTraceReport, findAllDirectedCycles, findAllUndirectedCycles } from '../../graph/utils/graphAnalysis'
 
-export type CinemaAlgorithm = 'BFS' | 'DFS' | 'Dijkstra' | 'Prims' | 'Kruskals' | 'MaxFlow' | 'ConnectedComponents' | 'SpanningForest' | 'StronglyConnectedComponents' | 'Bellman' | 'BellmanFord' | 'WelshPowell' | 'EulerienPath' | 'RechercheChaine'
+export type CinemaAlgorithm = 'BFS' | 'DFS' | 'Dijkstra' | 'Prims' | 'Kruskals' | 'MaxFlow' | 'ConnectedComponents' | 'SpanningForest' | 'StronglyConnectedComponents' | 'Bellman' | 'BellmanFord' | 'WelshPowell' | 'EulerienPath' | 'RechercheChaine' | 'AllCycles'
 
 export interface CinemaStep {
   narration: string
@@ -1367,6 +1367,76 @@ function buildWelshPowellProgram(graph: GraphState): CinemaStep[] {
   return steps
 }
 
+function buildAllCyclesProgram(graph: GraphState): CinemaStep[] {
+  const steps: CinemaStep[] = []
+  const isDirected = graph.directed
+  const cycleType = isDirected ? 'cycle' : 'circuit'
+  const cycleLabelEn = isDirected ? 'cycles' : 'circuits'
+
+  // Récupérer tous les cycles
+  const allCycles = isDirected
+    ? findAllDirectedCycles(graph.nodes, graph.edges)
+    : findAllUndirectedCycles(graph.nodes, graph.edges)
+
+  steps.push({
+    narration: `Initialisation: Recherche de TOUS les ${cycleLabelEn} dans le graphe ${isDirected ? 'orienté' : 'non orienté'}.`,
+    visited: [],
+    frontier: [],
+    treeEdges: []
+  })
+
+  if (allCycles.length === 0) {
+    steps.push({
+      narration: `Résultat: Aucun ${cycleType} détecté dans le graphe. Le graphe est acyclique.`,
+      visited: [],
+      frontier: [],
+      treeEdges: []
+    })
+    return steps
+  }
+
+  steps.push({
+    narration: `${allCycles.length} ${cycleLabelEn} trouvé(s). Affichage de chacun...`,
+    visited: [],
+    frontier: [],
+    treeEdges: []
+  })
+
+  // Visualiser chaque cycle
+  allCycles.forEach((cycle, cycleIndex) => {
+    // Trouver les arêtes du cycle
+    const treeEdges: string[] = []
+    for (let i = 0; i < cycle.length - 1; i++) {
+      const from = cycle[i]
+      const to = cycle[i + 1]
+      const matchingEdge = graph.edges.find(e =>
+        (e.from === from && e.to === to) ||
+        (!isDirected && e.from === to && e.to === from)
+      )
+      if (matchingEdge) {
+        treeEdges.push(matchingEdge.id)
+      }
+    }
+
+    const cycleLabel = cycle.join(' → ')
+    steps.push({
+      narration: `${cycleType} #${cycleIndex + 1}: ${cycleLabel}`,
+      visited: cycle,
+      frontier: [],
+      treeEdges
+    })
+  })
+
+  steps.push({
+    narration: `Résultat final: ${allCycles.length} ${cycleLabelEn} au total ont été détectés dans ce graphe.`,
+    visited: graph.nodes,
+    frontier: [],
+    treeEdges: []
+  })
+
+  return steps
+}
+
 export function buildCinemaProgram(
   graph: GraphState,
   algorithm: CinemaAlgorithm,
@@ -1399,6 +1469,8 @@ export function buildCinemaProgram(
         return buildStronglyConnectedComponentsProgram(graph)
       case 'WelshPowell':
         return buildWelshPowellProgram(graph)
+      case 'AllCycles':
+        return buildAllCyclesProgram(graph)
       case 'Bellman':
       case 'BellmanFord':
         return buildBellmanProgram(graph, source)

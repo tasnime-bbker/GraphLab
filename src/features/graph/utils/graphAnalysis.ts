@@ -767,3 +767,150 @@ export function isEulerian(nodes: NodeId[], edges: GraphEdge[]): boolean {
 
   return !hasOddDegree;
 }
+
+// ============================================================================
+// SECTION 6: RECHERCHE DE TOUS LES CYCLES/CIRCUITS
+// ============================================================================
+
+/**
+ * Trouve TOUS les cycles dans un graphe orienté.
+ * 
+ * Utilise une approche DFS modifiée pour explorer tous les chemins possibles
+ * à partir de chaque nœud et détecter les cycles sans doublons.
+ * 
+ * @param nodes Liste des identifiants des sommets
+ * @param edges Liste des arêtes du graphe
+ * @returns Tableau de tous les cycles trouvés (chaque cycle est un tableau de nœuds)
+ */
+export function findAllDirectedCycles(nodes: NodeId[], edges: GraphEdge[]): NodeId[][] {
+  if (nodes.length === 0 || edges.length === 0) return [];
+
+  const adj = buildAdjacencyList(nodes, edges, true);
+  const allCycles: NodeId[][] = [];
+  const seenCycles = new Set<string>();
+
+  /**
+   * Normalise un cycle pour éviter les doublons
+   * Exemple: [1,2,3,1] et [2,3,1,2] représentent le même cycle
+   */
+  function normalizeCycle(cycle: NodeId[]): string {
+    // Trouver le minimum
+    const min = Math.min(...cycle.slice(0, -1));
+    const minIdx = cycle.slice(0, -1).indexOf(min);
+    // Créer la représentation canonique en commençant par le minimum
+    const rotated = cycle.slice(minIdx, -1).concat(cycle.slice(0, minIdx));
+    return rotated.join(',');
+  }
+
+  /**
+   * DFS récursif pour trouver les cycles
+   */
+  function dfsForAllCycles(startNode: NodeId, currentNode: NodeId, path: NodeId[], visited: Set<NodeId>): void {
+    visited.add(currentNode);
+    path.push(currentNode);
+
+    const neighbors = adj.get(currentNode) || [];
+    for (const neighbor of neighbors) {
+      if (neighbor === startNode && path.length > 1) {
+        // Cycle détecté
+        const cycle = [...path, startNode];
+        const cycleKey = normalizeCycle(cycle);
+        if (!seenCycles.has(cycleKey)) {
+          seenCycles.add(cycleKey);
+          allCycles.push([...path]);
+        }
+      } else if (!visited.has(neighbor)) {
+        dfsForAllCycles(startNode, neighbor, path, visited);
+      }
+    }
+
+    path.pop();
+    visited.delete(currentNode);
+  }
+
+  // Lancer DFS depuis chaque nœud
+  for (const startNode of nodes) {
+    const visited = new Set<NodeId>();
+    dfsForAllCycles(startNode, startNode, [], visited);
+  }
+
+  return allCycles;
+}
+
+/**
+ * Trouve TOUS les circuits (cycles) dans un graphe non orienté.
+ * 
+ * Utilise une approche DFS modifiée pour explorer tous les chemins possibles
+ * à partir de chaque nœud et détecter les circuits sans doublons.
+ * 
+ * @param nodes Liste des identifiants des sommets
+ * @param edges Liste des arêtes du graphe
+ * @returns Tableau de tous les circuits trouvés (chaque circuit est un tableau de nœuds)
+ */
+export function findAllUndirectedCycles(nodes: NodeId[], edges: GraphEdge[]): NodeId[][] {
+  if (nodes.length === 0 || edges.length === 0) return [];
+
+  const adj = buildAdjacencyList(nodes, edges, false);
+  const allCycles: NodeId[][] = [];
+  const seenCycles = new Set<string>();
+
+  /**
+   * Normalise un cycle pour éviter les doublons
+   * Pour les graphes non orientés, deux cycles sont identiques même
+   * s'ils sont parcourus en sens opposé
+   */
+  function normalizeCycle(cycle: NodeId[]): string {
+    const min = Math.min(...cycle.slice(0, -1));
+    const minIdx = cycle.slice(0, -1).indexOf(min);
+    const rotated = cycle.slice(minIdx, -1).concat(cycle.slice(0, minIdx));
+    // Vérifier aussi la version inverse
+    const reversed = [rotated[0], ...rotated.slice(1).reverse()];
+    const rotatedKey = rotated.join(',');
+    const reversedKey = reversed.join(',');
+    return rotatedKey < reversedKey ? rotatedKey : reversedKey;
+  }
+
+  /**
+   * DFS récursif pour trouver les circuits
+   * parent est utilisé pour éviter de revenir immédiatement au parent
+   */
+  function dfsForAllCycles(
+    startNode: NodeId,
+    currentNode: NodeId,
+    path: NodeId[],
+    visited: Set<NodeId>,
+    parentNode: NodeId | undefined
+  ): void {
+    visited.add(currentNode);
+    path.push(currentNode);
+
+    const neighbors = adj.get(currentNode) || [];
+    for (const neighbor of neighbors) {
+      // Éviter de revenir au parent immédiat
+      if (neighbor === parentNode) continue;
+
+      if (neighbor === startNode && path.length > 2) {
+        // Circuit détecté (longueur >= 3)
+        const circuit = [...path, startNode];
+        const circuitKey = normalizeCycle(circuit);
+        if (!seenCycles.has(circuitKey)) {
+          seenCycles.add(circuitKey);
+          allCycles.push([...path]);
+        }
+      } else if (!visited.has(neighbor)) {
+        dfsForAllCycles(startNode, neighbor, path, visited, currentNode);
+      }
+    }
+
+    path.pop();
+    visited.delete(currentNode);
+  }
+
+  // Lancer DFS depuis chaque nœud
+  for (const startNode of nodes) {
+    const visited = new Set<NodeId>();
+    dfsForAllCycles(startNode, startNode, [], visited, undefined);
+  }
+
+  return allCycles;
+}
