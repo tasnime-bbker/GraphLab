@@ -1,5 +1,5 @@
 import { initialDocument } from '../model/defaults'
-import type { GraphDocument, GraphEdge, NodeId, Position } from '../model/types'
+import type { GraphDocument, GraphEdge, GraphState, NodeId, Position } from '../model/types'
 import { isWeightAllowed } from '../model/weightPolicy'
 
 export type GraphAction =
@@ -28,6 +28,7 @@ export type GraphAction =
   | { type: 'REDO' }
   | { type: 'JUMP_TO'; payload: { index: number } }
   | { type: 'SET_DEV_MODE'; payload: { isDevMode: boolean } }
+  | { type: 'SET_GRAPH_STATE'; payload: { graph: GraphState } }
 
 function edgeExists(
   edges: GraphEdge[],
@@ -573,6 +574,18 @@ export function graphReducer(
       return {
         ...state,
         isDevMode: action.payload.isDevMode,
+      }
+    }
+
+    case 'SET_GRAPH_STATE': {
+      return {
+        ...state,
+        graph: action.payload.graph,
+        interaction: {
+          selectedNodeId: null,
+          selectedEdgeId: null,
+          edgeDraftFrom: null,
+        },
       }
     }
 

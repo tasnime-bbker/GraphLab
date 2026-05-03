@@ -1,16 +1,42 @@
-import { Button, Code, Group, Paper, Select, Stack, Text } from '@mantine/core'
-import { useMemo, useState } from 'react'
-import { useGraphState } from '../../graph/state/useGraphStore'
+import { Button, Code, Group, Paper, Select, Stack, Text, Textarea } from '@mantine/core'
+import { useMemo, useState, useEffect } from 'react'
+import { useGraphState, useGraphDispatch } from '../../graph/state/useGraphStore'
 import { useI18n } from '../../../shared/context/I18nContext'
 import { formatGraphForExport, type ExportFormat, svgToPngBlob } from '../utils/exportFormats'
+import { parseGraph } from '../utils/importFormats'
 
 export function GraphContractPanel() {
   const { graph } = useGraphState()
+  const dispatch = useGraphDispatch()
   const { t } = useI18n()
   const [exportFormat, setExportFormat] = useState<ExportFormat>('json')
   const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle')
+  
+  const [isEditing, setIsEditing] = useState(false)
+  const [draftText, setDraftText] = useState('')
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const exportText = useMemo(() => formatGraphForExport(graph, exportFormat), [exportFormat, graph])
+
+  useEffect(() => {
+    if (!isEditing) {
+      setDraftText(exportText)
+      setErrorMsg(null)
+    }
+  }, [exportText, isEditing])
+
+  const canEdit = exportFormat === 'json' || exportFormat === 'adjacency' || exportFormat === 'edgelist'
+
+  function handleApply() {
+    try {
+      const newGraph = parseGraph(draftText, exportFormat, graph)
+      dispatch({ type: 'SET_GRAPH_STATE', payload: { graph: newGraph } })
+      setIsEditing(false)
+      setErrorMsg(null)
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Failed to parse input')
+    }
+  }
 
   async function copyExport() {
     try {
@@ -81,13 +107,18 @@ export function GraphContractPanel() {
             </button>
           </Group>
         </Group>
-        <Group align="stretch" gap="xs">
+        <Group justify="space-between" align="flex-end">
           <Select
-            w="100%"
+            w="200px"
             size="xs"
             label={t('toolbar.format')}
             value={exportFormat}
-            onChange={(value) => value && setExportFormat(value as ExportFormat)}
+            onChange={(value) => {
+              if (value) {
+                setExportFormat(value as ExportFormat)
+                setIsEditing(false)
+              }
+            }}
             data={[
               { value: 'json', label: 'JSON' },
               { value: 'adjacency', label: 'Adjacency List' },
@@ -96,18 +127,83 @@ export function GraphContractPanel() {
               { value: 'tikz', label: 'LaTeX TikZ' },
             ]}
           />
-          <div style={{ flex: 1, minHeight: 500, overflow: 'auto' }}>
-            {previewHtml ? (
-              <pre
-                className="p-4 rounded-xl border"
-                style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface-strong)', color: 'var(--app-text)', maxHeight: '700px', overflow: 'scroll' }}
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
-              />
-            ) : (
-              <Code block style={{ display: 'block', minHeight: 500, padding: 12 }}>{exportText}</Code>
-            )}
-          </div>
+          {canEdit && (
+            <Group gap="xs">
+              {isEditing ? (
+                <>
+                  <button className="btn-premium !bg-blue-700 hover:!bg-blue-600" onClick={handleApply}>
+                    Apply Changes
+                  </button>
+                  <button className="btn-premium !bg-slate-600 hover:!bg-slate-500" onClick={() => setIsEditing(false)}>
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button className="btn-premium" onClick={() => { setDraftText(exportText); setIsEditing(true); }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit Code
+                </button>
+              )}
+            </Group>
+          )}
         </Group>
+
+        {errorMsg && (
+          <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-400">
+            {errorMsg}
+          </div>
+        )}
+
+        <div style={{ height: 1050, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {isEditing ? (
+            <Textarea
+              value={draftText}
+              onChange={(e) => setDraftText(e.currentTarget.value)}
+              className="flex-1"
+              styles={{
+                input: {
+                  height: '100%',
+                  fontFamily: 'monospace',
+                  fontSize: '13px',
+                  backgroundColor: 'var(--app-surface-strong)',
+                  color: 'var(--app-text)',
+                  borderColor: 'var(--app-border)',
+                },
+                wrapper: { height: '100%' }
+              }}
+            />
+          ) : previewHtml ? (
+            <pre
+              className="p-4 rounded-xl border flex-1"
+              style={{
+                borderColor: 'var(--app-border)',
+                backgroundColor: 'var(--app-surface-strong)',
+                color: 'var(--app-text)',
+                overflow: 'auto',
+                margin: 0,
+                fontSize: '13px',
+                fontFamily: 'monospace'
+              }}
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
+            />
+          ) : (
+            <Code
+              block
+              className="flex-1"
+              style={{
+                display: 'block',
+                padding: 12,
+                overflow: 'auto',
+                margin: 0,
+                fontSize: '13px'
+              }}
+            >
+              {exportText}
+            </Code>
+          )}
+        </div>
       </Stack>
     </Paper>
   )

@@ -22,6 +22,9 @@ export interface CinemaStep {
   /** Coloration par groupe (Welsh-Powell, etc.) :
    *  chaque entrée porte une couleur CSS et les IDs des sommets de ce groupe. */
   colorGroups?: Array<{ color: string; nodeIds: NodeId[] }>
+  /** Custom colors for nodes and edges (Spanning Forest, etc.) */
+  nodeColors?: Record<number, string>
+  edgeColors?: Record<string, string>
 }
 
 export interface CinemaProgram {
@@ -352,28 +355,103 @@ function unionFind(nodes: NodeId[]) {
 
 function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
   const steps: CinemaStep[] = []
-  const sorted = [...graph.edges].sort((a, b) => a.weight - b.weight)
-  const uf = unionFind(graph.nodes)
+
+  if (graph.nodes.length === 0) {
+    steps.push({ narration: 'Kruskal : graphe vide — rien à faire.', visited: [], frontier: [], treeEdges: [] })
+    return steps
+  }
+
+  // ── Union-Find with path compression + union by rank ─────────────────────
+  const parent = new Map<NodeId, NodeId>()
+  const rank   = new Map<NodeId, number>()
+  for (const node of graph.nodes) {
+    parent.set(node, node)
+    rank.set(node, 0)
+  }
+
+  function find(x: NodeId): NodeId {
+    if (parent.get(x) !== x) {
+      parent.set(x, find(parent.get(x)!)) // path compression
+    }
+    return parent.get(x)!
+  }
+
+  function union(a: NodeId, b: NodeId): boolean {
+    const ra = find(a)
+    const rb = find(b)
+    if (ra === rb) return false          // same component → cycle
+    // union by rank
+    if ((rank.get(ra) ?? 0) < (rank.get(rb) ?? 0)) {
+      parent.set(ra, rb)
+    } else if ((rank.get(ra) ?? 0) > (rank.get(rb) ?? 0)) {
+      parent.set(rb, ra)
+    } else {
+      parent.set(rb, ra)
+      rank.set(ra, (rank.get(ra) ?? 0) + 1)
+    }
+    return true
+  }
+
+  // ── Deduplicate undirected edge pairs, then sort by weight ───────────────
+  const seen = new Set<string>()
+  const candidates = graph.edges
+    .filter(e => {
+      const key = e.from < e.to ? `${e.from}-${e.to}` : `${e.to}-${e.from}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .map(e => ({ ...e, w: graph.weighted ? e.weight : 1 }))
+    .sort((a, b) => a.w - b.w)
+
+  const N = graph.nodes.length
   const mstEdges: string[] = []
   let totalWeight = 0
+  const inMst = new Set<NodeId>()
 
-  for (const edge of sorted) {
-    steps.push({
-      narration: `Consider edge ${edge.from}->${edge.to} (w=${edge.weight}).`,
-      visited: [],
-      frontier: [],
-      treeEdges: [],
-      currentEdgeId: edge.id,
-      mstEdges: [...mstEdges],
-      mstWeight: totalWeight,
-    })
+  // ── Step 0 — show the sorted candidate list ───────────────────────────────
+  const sortedSummary = candidates
+    .map(e => `(${e.from}↔${e.to}, p=${e.w})`)
+    .join(', ')
+  steps.push({
+    narration: `Kruskal — initialisation. ${candidates.length} arête(s) triée(s) par poids croissant : ${sortedSummary}.`,
+    visited: [],
+    frontier: [],
+    treeEdges: [],
+    mstEdges: [],
+    mstWeight: 0,
+  })
 
-    if (uf.unite(edge.from, edge.to)) {
-      mstEdges.push(edge.id)
-      totalWeight += edge.weight
+  // ── Main loop ─────────────────────────────────────────────────────────────
+  for (const edge of candidates) {
+    if (mstEdges.length === N - 1) break  // MST complete
+
+    const cycleWouldForm = find(edge.from) === find(edge.to)
+
+    if (cycleWouldForm) {
+      // Rejected — would create a cycle
       steps.push({
-        narration: `Add edge ${edge.id} to MST. Total weight ${totalWeight}.`,
-        visited: [],
+        narration: `❌ Arête ${edge.from}↔${edge.to} (p=${edge.w}) rejetée — formerait un cycle dans le MST.`,
+        visited: [...inMst],
+        frontier: [],
+        treeEdges: [],
+        currentEdgeId: edge.id,
+        rejectedEdgeId: edge.id,
+        mstEdges: [...mstEdges],
+        mstWeight: totalWeight,
+      })
+    } else {
+      // Accepted — merge components
+      union(edge.from, edge.to)
+      mstEdges.push(edge.id)
+      inMst.add(edge.from)
+      inMst.add(edge.to)
+      totalWeight += edge.w
+
+      steps.push({
+        narration: `✅ Arête ${edge.from}↔${edge.to} (p=${edge.w}) ajoutée au MST. `
+          + `MST = {${mstEdges.length} arête(s)} | Poids total = ${totalWeight}.`,
+        visited: [...inMst],
         frontier: [],
         treeEdges: [],
         currentEdgeId: edge.id,
@@ -381,23 +459,16 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
         mstNewEdgeId: edge.id,
         mstWeight: totalWeight,
       })
-    } else {
-      steps.push({
-        narration: `Reject edge ${edge.id}; it forms a cycle.`,
-        visited: [],
-        frontier: [],
-        treeEdges: [],
-        currentEdgeId: edge.id,
-        mstEdges: [...mstEdges],
-        rejectedEdgeId: edge.id,
-        mstWeight: totalWeight,
-      })
     }
   }
 
+  // ── Final step ────────────────────────────────────────────────────────────
+  const isComplete = mstEdges.length === N - 1
   steps.push({
-    narration: `Kruskal complete. MST weight ${totalWeight}.`,
-    visited: [],
+    narration: isComplete
+      ? `✅ Kruskal terminé ! MST optimal trouvé — ${mstEdges.length} arête(s), poids total = ${totalWeight}.`
+      : `⚠️ Graphe non connexe. MST partiel : ${mstEdges.length} arête(s), poids = ${totalWeight}.`,
+    visited: [...inMst],
     frontier: [],
     treeEdges: [],
     mstEdges: [...mstEdges],
@@ -653,6 +724,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
   // componentMembers[i] = liste des noeuds de la composante i
   const componentMembers: NodeId[][] = []
   let componentIndex = 0
+  const nodeColors: Record<number, string> = {}
  
   // ── Étape initiale ──────────────────────────────────────────────────────────
   const allIdle: Record<number, { id: number; state: 'idle' }> = {}
@@ -665,6 +737,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
     visited: [],
     frontier: [],
     treeEdges: [],
+    nodeColors: { ...nodeColors },
     componentColors: { ...allIdle },   // on réutilise le champ visited/frontier
     componentMap: {},
   } as unknown as CinemaStep)
@@ -702,6 +775,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
     const queue: NodeId[] = [startNode]
     visited.add(startNode)
     componentOf[startNode] = componentIndex
+    nodeColors[startNode] = color
     members.push(startNode)
  
     // Étape : découverte du nœud racine de la nouvelle composante
@@ -713,18 +787,20 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
       visited: [...visited],
       frontier: [startNode],
       treeEdges: [],
+      nodeColors: { ...nodeColors },
       _nodes: nodeSnap1,
       _highlights: [...buildHighlights().slice(0, componentIndex), { type: 'convex_hull', nodes: [...members], color }],
     } as unknown as CinemaStep)
  
     while (queue.length > 0) {
       const current = queue.shift()!
-     const neighbors = neighborsFor(graph, current, true) 
+      const neighbors = neighborsFor(graph, current, true) 
  
       for (const { nodeId: neighbor, edgeId } of neighbors) {
         if (!visited.has(neighbor)) {
           visited.add(neighbor)
           componentOf[neighbor] = componentIndex
+          nodeColors[neighbor] = color
           members.push(neighbor)
           queue.push(neighbor)
  
@@ -739,6 +815,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
             treeEdges: [],
             currentNode: neighbor,
             currentEdgeId: edgeId,
+            nodeColors: { ...nodeColors },
             _nodes: nodeSnap,
             _highlights: [...buildHighlights().slice(0, componentIndex), { type: 'convex_hull', nodes: [...members], color }],
           } as unknown as CinemaStep)
@@ -752,6 +829,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
       visited: [...visited],
       frontier: [],
       treeEdges: [],
+      nodeColors: { ...nodeColors },
       _nodes: buildNodeSnapshot(),
       _highlights: buildHighlights(),
     } as unknown as CinemaStep)
@@ -765,6 +843,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
     visited: [...visited],
     frontier: [],
     treeEdges: [],
+    nodeColors: { ...nodeColors },
     _nodes: buildNodeSnapshot(),
     _highlights: [
       ...buildHighlights(),
@@ -787,6 +866,8 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
   const componentOf: Record<NodeId, number> = {}
   const componentMembers: NodeId[][] = []
   let componentIndex = 0
+  const nodeColors: Record<number, string> = {}
+  const edgeColors: Record<string, string> = {}
  
   // Snapshot helpers
   function buildNodeSnapshot(visiting?: NodeId): Record<number, { id: number; state: string; badge?: string }> {
@@ -851,6 +932,8 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
       frontier: [startNode],
       treeEdges: [...forestEdgeIds],
       currentNode: startNode,
+      nodeColors: { ...nodeColors },
+      edgeColors: { ...edgeColors },
       _nodes: buildNodeSnapshot(startNode),
       _edges: buildEdgeSnapshot(),
       _highlights: buildHighlights(),
@@ -868,6 +951,12 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
         componentOf[neighbor] = componentIndex
         members.push(neighbor)
         forestEdgeIds.push(edgeId)
+        
+        const currentColor = COMPONENT_COLORS[componentIndex % COMPONENT_COLORS.length]
+        nodeColors[neighbor] = currentColor
+        edgeColors[edgeId] = currentColor
+        nodeColors[startNode] = currentColor // Ensure start node is colored
+        
         stack.push(neighbor)
  
         steps.push({
@@ -877,6 +966,8 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
           treeEdges: [...forestEdgeIds],
           currentNode: neighbor,
           currentEdgeId: edgeId,
+          nodeColors: { ...nodeColors },
+          edgeColors: { ...edgeColors },
           _nodes: buildNodeSnapshot(neighbor),
           _edges: buildEdgeSnapshot(edgeId),
           _highlights: buildHighlights(),
@@ -894,6 +985,8 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
       visited: [...visited],
       frontier: [],
       treeEdges: [...forestEdgeIds],
+      nodeColors: { ...nodeColors },
+      edgeColors: { ...edgeColors },
       _nodes: buildNodeSnapshot(),
       _edges: buildEdgeSnapshot(),
       _highlights: buildHighlights(),
@@ -908,6 +1001,8 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
     visited: [...visited],
     frontier: [],
     treeEdges: [...forestEdgeIds],
+    nodeColors: { ...nodeColors },
+    edgeColors: { ...edgeColors },
     _nodes: buildNodeSnapshot(),
     _edges: buildEdgeSnapshot(),
     _highlights: [
