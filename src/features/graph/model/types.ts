@@ -9,9 +9,11 @@ export interface GraphEdge {
   id: string
   from: NodeId
   to: NodeId
-  weight: number
+  weight: number // considéré comme capacité pour les algos de flot
   directed?: boolean
   symmetryKey?: string
+  flow?: number      // flow initial _ ALGO_FLOWMAX (optionnel, 0 par défaut)
+
 }
 
 // Backend-facing contract.

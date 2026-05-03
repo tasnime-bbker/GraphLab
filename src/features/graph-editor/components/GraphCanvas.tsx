@@ -38,6 +38,9 @@ import {
 import { ENABLE_CLUSTER_ZONES } from '../config/featureFlags'
 import './GraphCanvas.css'
 import {Button} from "@mantine/core";
+import { ResidualGraphPanel } from './ResidualGraphPannel';
+import { generateFlowReportHtml } from './flowReportTemplate'
+import type { NodeId } from '../../graph/model/types'
 
 const CANVAS_WIDTH = 900
 const CANVAS_HEIGHT = 520
@@ -167,13 +170,20 @@ function EdgeItem({
   isSelected,
   directed,
   weighted,
+  isMaxFlow,
   editingEdgeId,
+  editingFlowEdgeId,
   weightDraft,
+  flowDraft,
   startWeightEdit,
+  startFlowEdit,
   setWeightDraft,
+  setFlowDraft,
   setWeightError,
   commitWeight,
+  commitFlow,
   setEditingEdgeId,
+  setEditingFlowEdgeId,
   dispatch
 }: any) {
   const pathRef = useRef<SVGPathElement>(null)
@@ -261,12 +271,64 @@ function EdgeItem({
               textAnchor="middle"
               className="pointer-events-none fill-white text-[12px] font-bold"
             >
-              {edge.weight}
+              {isMaxFlow ? `${edge.flow ?? 0}/${edge.weight}` : edge.weight}
+            </text>
+          )}
+        </g>
+      )}
+          {/* ← AJOUTER ICI, juste avant le </g> final */}
+      {weighted && isMaxFlow && (
+        <g className="cursor-pointer" onClick={(event) => {
+          event.stopPropagation()
+          startFlowEdit(edge.id, edge.flow ?? 0)
+        }}>
+          <circle
+            cx={geometry.labelX}
+            cy={geometry.labelY + 22}
+            r={14}
+            fill="#1e1b4b"
+            stroke="#22c55e"
+            strokeWidth={1.5}
+          />
+          {editingFlowEdgeId === edge.id ? (
+            <foreignObject
+              x={geometry.labelX - 28}
+              y={geometry.labelY + 8}
+              width={56}
+              height={28}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <input
+                autoFocus
+                value={flowDraft}
+                className="h-7 w-14 rounded bg-slate-900 border border-green-500 px-1 text-center text-xs font-semibold text-white outline-none"
+                onChange={(event) => setFlowDraft(event.currentTarget.value)}
+                  // ← passer la valeur directement depuis l'event
+                onBlur={(event) => commitFlow(edge.id, event.currentTarget.value)}
+  
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    const val = event.currentTarget.value
+                    commitFlow(edge.id, val)
+                  }
+                  if (event.key === 'Escape') setEditingFlowEdgeId(null)
+                }}
+              />
+            </foreignObject>
+          ) : (
+            <text
+              x={geometry.labelX}
+              y={geometry.labelY + 26}
+              textAnchor="middle"
+              className="pointer-events-none fill-green-300 text-[11px] font-bold"
+            >
+              f:{edge.flow ?? 0}
             </text>
           )}
         </g>
       )}
     </g>
+    
   )
 }
 
@@ -281,6 +343,12 @@ export function GraphCanvas() {
   )
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null)
   const [weightDraft, setWeightDraft] = useState('')
+    // ID de l'arête dont on est en train d'éditer le flow
+  // null = aucune arête en cours d'édition
+  const [editingFlowEdgeId, setEditingFlowEdgeId] = useState<string | null>(null)
+  // La valeur tapée par l'utilisateur dans l'input du flow
+  // C'est une string car l'input retourne toujours du texte
+  const [flowDraft, setFlowDraft] = useState('')
   const [weightError, setWeightError] = useState<string | null>(null)
   const [bursts, setBursts] = useState<{ id: number; x: number; y: number }[]>([])
   const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null })
@@ -597,6 +665,12 @@ export function GraphCanvas() {
     setWeightDraft(String(currentWeight))
     setWeightError(null)
   }
+  //pour l algo MaxFlow
+  function startFlowEdit(edgeId: string, currentFlow: number) {
+  setEditingFlowEdgeId(edgeId)
+  setFlowDraft(String(currentFlow))
+  setWeightError(null)
+}
 
   function commitWeight(edgeId: string) {
     const parsed = parseWeightInput(weightDraft)
@@ -617,11 +691,170 @@ export function GraphCanvas() {
     setWeightError(null)
   }
 
+  function commitFlow(edgeId: string , rawValue?: string) {
+  // On convertit la valeur tapée en nombre
+    const valueToCommit = rawValue ?? flowDraft
+  const parsed = parseWeightInput(valueToCommit)
+
+  // Si la valeur n'est pas un nombre valide ou est négative → erreur
+  if (parsed === null || parsed < 0) {
+    setWeightError('Flow doit être un nombre >= 0')
+    return
+  }
+
+  // On cherche l'arête dans le graphe pour vérifier sa capacité
+  const edge = graph.edges.find(e => e.id === edgeId)
+  if (!edge) return
+
+  // Le flow ne peut pas dépasser la capacité de l'arête
+  if (parsed > Math.max(1, edge.weight)) {
+    setWeightError(`Flow (${parsed}) ne peut pas dépasser la capacité (${edge.weight})`)
+    return
+  }
+  /*
+   // ── On construit l'état futur du graphe AVANT de dispatcher ──────────────
+  // On simule les nouvelles arêtes avec le flot modifié
+  const updatedEdges = graph.edges.map(e =>
+    e.id === edgeId ? { ...e, flow: parsed } : e
+  )*/
+/*
+  // ── VÉRIFICATION DE KIRCHHOFF ─────────────────────────────────────────────
+  // Pour chaque nœud intermédiaire (ni source ni puits) :
+  // somme des flots entrants = somme des flots sortants
+  const source = graph.nodes[0]  // ← adapter selon votre logique
+  const target = cinemaTargetNode  // ← le puits sélectionné
+
+  for (const nodeId of graph.nodes) {
+    // On ignore la source et le puits — Kirchhoff ne s'applique qu'aux nœuds intermédiaires
+    if (nodeId === source || nodeId === target) continue
+
+    const flowIn = updatedEdges
+      .filter(e => e.to === nodeId)
+      .reduce((sum, e) => sum + (e.flow ?? 0), 0)
+
+    const flowOut = updatedEdges
+      .filter(e => e.from === nodeId)
+      .reduce((sum, e) => sum + (e.flow ?? 0), 0)
+
+    if (flowIn !== flowOut) {
+      setWeightError(
+        `Loi de Kirchhoff violée au nœud ${nodeId} : entrant=${flowIn} ≠ sortant=${flowOut}`
+      )
+      return  // ← on bloque la sauvegarde
+    }
+  }*/
+
+  // Tout est valide → on envoie l'action au reducer pour sauvegarder
+  dispatch({ type: 'SET_EDGE_FLOW', payload: { edgeId, flow: parsed } })
+
+  // On ferme l'input et on remet le draft à vide
+  setEditingFlowEdgeId(null)
+  setFlowDraft('')
+
+  // On efface les erreurs
+  setWeightError(null)
+}
+function exportFlowResult() {
+  if (!currentCinemaStep?.flowByEdge || cinemaSourceNode === null || cinemaTargetNode === null) return
+
+  const flowByEdge = currentCinemaStep.flowByEdge
+  const flowMap = new Map(Object.entries(flowByEdge).map(([k, v]) => [k, v as number]))
+
+  // Coupe minimale
+  const reachable = new Set<number>([cinemaSourceNode])
+  const queue = [cinemaSourceNode]
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const edge of graph.edges) {
+      if (edge.from === current && !reachable.has(edge.to)) {
+        if (Math.max(1, edge.weight) - (flowMap.get(edge.id) ?? 0) > 0) {
+          reachable.add(edge.to); queue.push(edge.to)
+        }
+      }
+      if (edge.to === current && !reachable.has(edge.from)) {
+        if ((flowMap.get(edge.id) ?? 0) > 0) {
+          reachable.add(edge.from); queue.push(edge.from)
+        }
+      }
+    }
+  }
+
+  const cutEdges = graph.edges.filter(e => reachable.has(e.from) && !reachable.has(e.to))
+
+  const html = generateFlowReportHtml({
+    graph,
+    flowByEdge,
+    maxFlow: graph.edges
+      .filter(e => e.from === cinemaSourceNode)
+      .reduce((sum, e) => sum + (flowByEdge[e.id] ?? 0), 0),
+    pathCount: currentCinemaStep.augmentingPathIndex ?? 0,
+    pathHistory: currentCinemaStep.pathHistory ?? [],
+    source: cinemaSourceNode,
+    target: cinemaTargetNode,
+    cutEdges,
+    cutCapacity: cutEdges.reduce((sum, e) => sum + Math.max(1, e.weight), 0),
+    sSet: [...reachable].join(', '),
+    tSet: graph.nodes.filter(n => !reachable.has(n)).join(', '),
+  })
+
+  const blob = new Blob([html], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank')
+  setTimeout(() => URL.revokeObjectURL(url), 5000)
+}
   function runCinema() {
     if (cinemaSourceNode === null) {
       return
     }
+    if (cinemaAlgorithm==='MaxFlow'){
 
+    if (!graph.directed) {
+      setWeightError('Ford-Fulkerson nécessite un graphe orienté.')
+      return
+    }
+     if (cinemaSourceNode === cinemaTargetNode) {
+      setWeightError('La source et le puits doivent être différents.')
+      return
+    }
+
+    for (const edge of graph.edges){
+      const flow = edge.flow ?? 0 
+      const capacity = Math.max(1,edge.weight)
+      if (flow<0 || flow>capacity){
+        setWeightError(`Arete ${edge.from}->${edge.to} a un flot initial invalide (${flow}, capacité ${capacity}).`)
+        return
+      }
+    }
+
+
+    // ── VÉRIFICATION DE KIRCHHOFF ─────────────────────────────────────────
+    // On vérifie UNIQUEMENT si l'utilisateur a saisi des flots initiaux
+    const hasInitialFlow = graph.edges.some(e => (e.flow ?? 0) > 0)
+
+    if (hasInitialFlow) {
+      for (const nodeId of graph.nodes) {
+        // Ignorer source et puits
+        if (nodeId === cinemaSourceNode || nodeId === cinemaTargetNode) continue
+
+        const flowIn = graph.edges
+          .filter(e => e.to === nodeId)
+          .reduce((sum, e) => sum + (e.flow ?? 0), 0)
+
+        const flowOut = graph.edges
+          .filter(e => e.from === nodeId)
+          .reduce((sum, e) => sum + (e.flow ?? 0), 0)
+
+        if (flowIn !== flowOut) {
+          setWeightError(
+            `Kirchhoff violé au nœud ${nodeId} : entrant=${flowIn} ≠ sortant=${flowOut}. Le flot initial doit être réalisable.`
+          )
+          return
+        }
+      }
+    }
+
+      
+    }
     const program = buildCinemaProgram(
       graph,
       cinemaAlgorithm,
@@ -962,6 +1195,25 @@ export function GraphCanvas() {
   const viewportY = (-transform.y / transform.k) * minimapScaleY
   const viewportWidth = (CANVAS_WIDTH / transform.k) * minimapScaleX
   const viewportHeight = (CANVAS_HEIGHT / transform.k) * minimapScaleY
+    // ── AJOUTER ICI ───────────────────────────────────────────────────────────
+  const kirchhoffViolations = useMemo(() => {
+    if (cinemaAlgorithm !== 'MaxFlow' || !graph.weighted) return []
+
+    const violations: NodeId[] = []
+    for (const nodeId of graph.nodes) {
+      if (nodeId === cinemaSourceNode || nodeId === cinemaTargetNode) continue
+
+      const flowIn = graph.edges
+        .filter(e => e.to === nodeId)
+        .reduce((sum, e) => sum + (e.flow ?? 0), 0)
+      const flowOut = graph.edges
+        .filter(e => e.from === nodeId)
+        .reduce((sum, e) => sum + (e.flow ?? 0), 0)
+
+      if (flowIn !== flowOut) violations.push(nodeId)
+    }
+    return violations
+  }, [graph.edges, graph.nodes, cinemaAlgorithm, cinemaSourceNode, cinemaTargetNode])
 
   function navigateFromMinimap(event: MouseEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -1114,7 +1366,28 @@ export function GraphCanvas() {
           }}
           onScrub={scrubCinema}
         />
-
+         {cinemaAlgorithm === 'MaxFlow' && currentCinemaStep && cinemaSourceNode !== null && cinemaTargetNode !== null && (
+          <ResidualGraphPanel
+            step={currentCinemaStep}
+            graph={graph}
+            source={cinemaSourceNode}
+            target={cinemaTargetNode}
+          />
+        )}
+        {/* ── AJOUTER ICI ─────────────────────────────────────────────── */}
+        {cinemaAlgorithm === 'MaxFlow' && currentCinemaStep?.flowByEdge &&  cinemaProgram !== null &&
+ cinemaStepIndex === cinemaProgram.steps.length - 1 && (
+          <div className="flex justify-end">
+            <Button
+              size="xs"
+              variant="light"
+              color="teal"
+              onClick={exportFlowResult}
+            >
+              Exporter le résultat 
+            </Button>
+          </div>
+        )}
         {queryHighlights !== null && (
           <p className="text-xs text-slate-300">{queryHighlights.message}</p>
         )}
@@ -1276,6 +1549,7 @@ export function GraphCanvas() {
                 isSelected={isSelected}
                 directed={edge.hasArrow}
                 weighted={graph.weighted}
+                isMaxFlow={cinemaAlgorithm === 'MaxFlow'}  // Ajout pour detecter Algo MaxFlow
                 editingEdgeId={editingEdgeId}
                 weightDraft={weightDraft}
                 startWeightEdit={startWeightEdit}
@@ -1283,6 +1557,12 @@ export function GraphCanvas() {
                 setWeightError={setWeightError}
                 commitWeight={commitWeight}
                 setEditingEdgeId={setEditingEdgeId}
+                setEditingFlowEdgeId={setEditingFlowEdgeId}  // ← AJOUTER
+                editingFlowEdgeId={editingFlowEdgeId}   
+                flowDraft={flowDraft}                   // ← AJOUTER
+                startFlowEdit={startFlowEdit}           // ← AJOUTER
+                setFlowDraft={setFlowDraft}             // ← AJOUTER
+                commitFlow={commitFlow}                 // ← AJOUTER
                 dispatch={dispatch}
               />
             )
@@ -1387,6 +1667,25 @@ export function GraphCanvas() {
               />
             )
           })}
+          {/* ── AJOUTER ICI ─────────────────────────────────────────────── */}
+          {kirchhoffViolations.map(nodeId => {
+            const pos = graph.positions[nodeId]
+            if (!pos) return null
+            return (
+              <circle
+                key={`kirchhoff-violation-${nodeId}`}
+                cx={pos.x}
+                cy={pos.y}
+                r={NODE_RADIUS + 8}
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth={2.5}
+                strokeDasharray="4 3"
+                opacity={0.85}
+              />
+            )
+          })}
+          {/* ────────────────────────────────────────────────────────────── */}
 
           {currentCinemaStep?.pathEdges?.map((edgeId) => {
             const geometry = edgeGeometryById.get(edgeId)
@@ -1720,6 +2019,39 @@ export function GraphCanvas() {
               </text>
             </g>
           )}
+          
+          {/* ── AJOUTER ICI ────────────────────────────────────────────── */}
+          {cinemaAlgorithm === 'MaxFlow' && currentCinemaStep?.flowByEdge && cinemaSourceNode !== null && cinemaTargetNode !== null && (() => {
+            const flowOut = graph.edges
+              .filter(e => e.from === cinemaSourceNode)
+              .reduce((sum, e) => sum + (currentCinemaStep.flowByEdge?.[e.id] ?? 0), 0)
+
+            const flowIn = graph.edges
+              .filter(e => e.to === cinemaTargetNode)
+              .reduce((sum, e) => sum + (currentCinemaStep.flowByEdge?.[e.id] ?? 0), 0)
+
+            return (
+              <>
+                {graph.positions[cinemaSourceNode] && (
+                  <g transform={`translate(${graph.positions[cinemaSourceNode].x - 45} ${graph.positions[cinemaSourceNode].y - 42})`}>
+                    <rect width="90" height="22" rx="6" fill="rgba(15,23,42,0.9)" stroke="#60a5fa" strokeWidth="1"/>
+                    <text x="8" y="15" fontSize="11" fontWeight="600" fill="#60a5fa">
+                      V(f) = {flowOut}
+                    </text>
+                  </g>
+                )}
+                {graph.positions[cinemaTargetNode] && (
+                  <g transform={`translate(${graph.positions[cinemaTargetNode].x - 45} ${graph.positions[cinemaTargetNode].y - 42})`}>
+                    <rect width="90" height="22" rx="6" fill="rgba(15,23,42,0.9)" stroke="#4ade80" strokeWidth="1"/>
+                    <text x="8" y="15" fontSize="11" fontWeight="600" fill="#4ade80">
+                      V(f) = {flowIn}
+                    </text>
+                  </g>
+                )}
+              </>
+            )
+          })()}
+          {/* ─────────────────────────────────────────────────────────── */}
           </g>
         </svg>
 
