@@ -1,93 +1,32 @@
-# Frontend Progress Tracker
+# Frontend Achievement Log
 **Team Member:** Yassine Drira
 **Role:** Frontend Architecture & UX Engineering
 
-## 🎨 Design & Architecture Enhancements
-- Orchestrated the transition to a modern, glassmorphic dark-theme visual editor for `GraphCanvas`.
-- Restructured `GraphCanvas` by extracting `EdgeItem` into an isolated component to optimize edge rendering and eliminate expensive React re-renders on the main canvas.
-- Re-architected the `useShortcut` Context and Hook pattern. Resolved a critical React lifecycle issue by implementing a callback `useRef` to prevent infinite re-registrations of event listeners.
+## 🎓 Educational Platform Concept
+- **Algorithm Masterclass Sidebar**: Transformed the editor into a full-scale learning platform with integrated docs for 15+ algorithms.
+- **Dynamic Complexity Engine**: Engineered a real-time $O(N,E)$ calculator that displays absolute operation counts based on current graph size.
+- **Multimedia Learning Integration**: Curated high-quality video tutorials and step-by-step logic guides for every supported algorithm.
 
-## ⚡ Interactive UX & Animation
-- Designed and implemented a high-performance SVG `EdgeFlowParticles` system leveraging raw DOM manipulation (`requestAnimationFrame`) for 60fps data flow visualization.
-- Built a dynamic `ParticleBurst` component to provide immediate visual feedback upon node creation.
-- Implemented `EdgePulse` animations to confirm edge connections instantly.
+## 💎 Premium Design & UX Overhaul
+- **Cyber-Lab Aesthetic**: Led the end-to-end visual redesign featuring glassmorphic panels, backdrop blurs, and a cyan/blue futuristic theme.
+- **Ghosting Mode Engine**: Developed a bespoke visualization mode to preserve the original graph structure underneath active algorithm overlays.
+- **Advanced Animation Engine**: Implemented 60fps SVG particle flow, semantic state badges, and shimmering progress indicators for enhanced feedback.
+- **3D Sphere Node System**: Upgraded node aesthetics using complex SVG radial gradients and inset glow filters for a high-end physical feel.
+- **Infinite 2D Camera**: Integrated a zero-boundary pan/zoom system (0.1x to 5x) for immersive large-scale graph exploration.
 
-## 🐛 Bug Fixes & Issue Resolution
-- **Node ID Gap-Filling:** Refactored the strictly auto-incrementing database-style ID logic in `graphReducer.ts`. Engineered a gap-finding algorithm so deleted Node IDs (e.g., node 3) are automatically reused to maintain logical sequential numbering for the user.
-- **SVG Animation Engine Quirks:** Solved a complex browser rendering bug where CSS `transform: scale()` caused particles to collapse toward the SVG bounds instead of the node center. Rewrote the burst logic to rely purely on absolute pixel translation (`dx/dy`) and opacity.
-- **Vite HMR Crashing:** Resolved a critical Vite Fast Refresh error that was killing the dev server by properly decoupling hook exports (`useShortcut.ts`) from React Context providers.
-- **Animation Desync:** Fixed an issue where edge particles decoupled from the path when nodes were dragged. Moved the `getTotalLength()` calculation inside the animation loop to ensure perfect real-time arc tracking.
-- **Shortcut Safety:** Patched the global shortcut listener to explicitly ignore keypresses inside `<input>` and `<textarea>` elements, preventing users from accidentally deleting edges while editing weights.
+## 🛠️ Developer & Power Tools
+- **Bi-Directional JSON Editor**: Engineered a live synchronization engine between raw text-based graph contracts and the visual canvas.
+- **Universal Export Suite**: Developed a robust serialization engine supporting multi-format exports (JSON, DOT, LaTeX TikZ, and high-res PNG).
+- **Time-Travel History System**: Implemented a non-destructive 50-step Undo/Redo mechanism using a custom historyReducer middleware.
+- **Power-User Shortcut Suite**: Integrated a command-centric keyboard navigation system to accelerate graph construction and manipulation.
 
-## 🧠 UX Intelligence (Sprint 3)
-- **Magnetic Snap Guides:** Engineered a `useMagneticSnap` hook and integrated it directly into the D3 drag behavior lifecycle. Nodes now perfectly snap into vertical and horizontal alignment with neighboring nodes (12px threshold) while rendering visual crosshair guides.
-- **Live Graph Metrics Dashboard:** Developed an absolute-positioned floating dashboard that dynamically calculates and renders Node Count, Edge Count, and Network Density in real-time using `useMemo` optimizations. (Static exclusion zone removed in favor of Dev Mode toggle).
-- **Responsive Matrix Engine:** Re-engineered the Adjacency Matrix with dynamic scaling. The UI now automatically adjusts padding, input sizes, and font weights based on node count (N), ensuring the matrix remains fully visible and editable even for 40+ nodes.
+## 🌍 Globalization & Accessibility
+- **Full i18n Framework**: Established a complete English/French localization registry supporting 100% of UI elements and documentation.
+- **Theme-Aware Components**: Harmonized Light/Dark mode accessibility across all panels, resolving critical contrast and visibility issues.
+- **Dynamic Matrix UI**: Re-engineered the adjacency matrix with N-scale adaptive logic, ensuring visibility for graphs with 40+ nodes.
 
-## 🌌 Interaction & Atmosphere (Sprint 4)
-- **Animated Grid Background:** Injected an infinite scrolling optical illusion by expanding the background coordinate space to 100,000px, giving the canvas a feeling of vast depth.
-- **3D Glass Sphere Nodes:** Upgraded node aesthetics from flat circles to high-end 3D orbs using SVG radial gradients and inset glow filters for a premium "Cyber-Lab" feel.
-- **Infinite 2D Pan/Zoom Camera:** Integrated `d3-zoom` to unlock the camera. Users can now zoom from 0.1x to 5x and pan infinitely in all directions, turning the editor into an immersive "space" exploration experience.
-
-## 🛠️ Developer Experience & Power Tools (Sprint 4)
-- **Time-Travel Graph History:** Implemented a `historyReducer` middleware that automatically captures state snapshots. Users can now perform up to 50 steps of **Undo/Redo** (`Ctrl+Z` / `Ctrl+Y`) with non-destructive state restoration.
-- **Power-User Shortcuts:** Integrated a series of keyboard shortcuts to accelerate graph construction:
-  - `N`: Instantly drops a new node at the exact center of the current camera view (collision-aware).
-  - `D`: Toggles Directed/Undirected mode globally.
-  - `W`: Toggles Edge Weights globally.
-  - `Delete/Backspace`: Removes the selected entity.
-  - `Escape`: Universal cancel for drafts and edits.
-- **Developer Mode Toggle:** Introduced a high-level UI switch to show/hide the JSON Contract panel. This optimizes screen real-estate for non-technical users while providing instant data visibility for developers.
-- **Shortcut Case Normalization:** Resolved a bug in the shortcut engine that caused intermittent failures with combination keys like `Ctrl+Z`. The engine now correctly normalizes all inputs to uppercase for robust matching.
-
-## 🐛 Bug Fixes & Issue Resolution (Sprint 4 Polish)
-- **Camera Coordinate Mapping:** Resolved a critical bug where adding nodes after zooming/panning resulted in incorrect placements. Re-engineered the point-transformation logic to manually apply the zoom matrix to viewport clicks.
-- **Event Filtering for Right-Click:** Fixed an issue where the camera engine swallowed right-click events. Injected explicit event filters into the D3 zoom/drag behavior to ignore button 2, restoring standard React `onContextMenu` functionality for node deletion.
-
-### Session Update: May 1, 2026 - Glassmorphic Restoration & Logical Hardening
-
-#### 1. UI/UX Restoration (The "Glassmorphic Recovery")
-- **Full System Recovery**: Successfully restored the "Late-era Glassmorphic Futurism" UI after a critical Git reset. 
-- **Premium Components**: Re-applied high-end styling to `GraphWorkspace`, `MatrixEditor`, `AlgorithmCinemaPanel`, and `GraphToolbar`.
-- **Dynamic Aesthetics**: Restored animated glass panels, backdrop blurs, and the bespoke CSS design system (Tailwind v4 compatible).
-
-#### 2. Directed/Undirected Logic Synchronization
-- **Symmetric Edge Logic**: Implemented atomic symmetric pairs (A→B and B→A) for undirected modes to ensure the Adjacency Matrix and Graph Canvas are always in sync.
-- **Bidirectional Animations**: Added support for bidirectional particle flow (`EdgeFlowParticles`) to visually represent undirected connections.
-- **Mode-Aware Actions**: Updated `ADD_EDGE` and `DELETE_EDGE` reducers to handle mode-specific requirements, ensuring database-level consistency between the two representations.
-
-#### 3. Mathematical Metrics Hardening
-- **Logical Edge Counting**: Resolved the "166% Density" bug by implementing a unique-pair registry for edge counting. Metrics now correctly treat undirected pairs as a single logical edge.
-- **Graph Type Detection**: Fixed "Complet", "Régulier", and "Planaire" detection logic. $K_3$ and other standard graphs now report 100% accurate density and types.
-- **Self-Loop Support**: Hardened the system to handle self-loops in both directed and undirected modes without breaking mathematical invariants.
-
-#### 4. Git & Workflow
-- **Conflict Resolution**: Managed complex merge conflicts between the `ui-ux-enhancements` branch and `origin main`.
-- **State Stabilization**: Synchronized the local development environment with the remote repository while preserving 15+ custom UI commits.
-
-
-### Session Update: May 2, 2026 - Premium Cinema Overhaul & Floating Power Tools
-
-#### 1. Algorithm Cinema "Pro" Overhaul
-- **Shimmering Progress Visualization**: Engineered a top-mounted, reactive progress bar with a purple-to-indigo shimmering animation that tracks algorithm execution states.
-- **Semantic Status Badges**: Developed an intelligent badge system (`🔍 Explore`, `✅ Ajouté`, `🏁 Terminé`, `❌ Rejeté`) that provides real-time human-readable feedback on the algorithm's decision-making process.
-- **Glassmorphic Control Suite**: Redesigned the playback panel with a segmented control layout, improved typography (Outfit), and high-end iconography.
-
-#### 2. Intelligent PNG Snapshot Engine
-- **Theme-Aware Serialization**: Built a custom SVG-to-PNG engine that resolves CSS variables (`var(--app-*)`) in real-time, ensuring snapshots match the user's light/dark mode perfectly.
-- **Dynamic Framing**: Implemented an auto-centering and zoom-to-fit algorithm that calculates graph bounding boxes (with padding) to generate professional, high-resolution graph exports.
-- **Visual Fidelity**: Injected custom styles and SVG filters into the export blob to preserve the "Cyber-Lab" glow and high-contrast edges in the final image.
-
-#### 3. Floating Top Toolbar & Search
-- **Pill-Shaped Command Center**: Designed and anchored a premium, horizontal floating toolbar to the top of the canvas for instant access to power tools.
-- **Inline Node Search**: Integrated a downward-expanding search bar within the toolbar that allows users to instantly find and center nodes by ID with a `pulse-ring` visual confirmation.
-- **Utility Grouping**: Centralized Undo/Redo, Zoom indicators, Reset View, and Screenshot actions into a single high-performance glassmorphic component.
-
-#### 4. Reactive UX & Performance
-- **Metric Pulse Animations**: Implemented a "Value-Changed" pulse effect for the Metrics Dashboard. Nodes, Edges, and Density values now glow and scale subtly upon change to confirm user interactions.
-- **Shutter Flash Feedback**: Added a viewport-level "Shutter Flash" overlay to provide satisfying visual confirmation when taking canvas snapshots.
-- **State Cleanup Logic**: Engineered a "Toolbar Desync" fix that automatically closes search bars and clears selection highlights after a node or edge is created, keeping the workspace clutter-free.
-
-#### 5. Integration & Architecture
-- **Event-Driven Synchronization**: Implemented a `CustomEvent` bridge between the `GraphCanvas` and `CommandPalette` to keep the floating toolbar's active states synchronized with global UI overlays.
-- **Code Hardening**: Resolved identifier collision bugs and Vite transform failures while maintaining 100% clean HMR.
+## ⚙️ Core Architecture & Hardening
+- **SVG Rendering Optimization**: Re-architected the canvas with isolated component rendering to maintain 60fps during complex state updates.
+- **Magnetic Snap System**: Engineered interactive alignment guides that provide visual crosshair feedback for precise node placement.
+- **Robust State Management**: Implemented gap-filling Node ID logic and logical edge counting for undirected mode consistency.
+- **Event-Driven Sync**: Developed a CustomEvent bridge to synchronize active UI states between the canvas, toolbar, and command palette.

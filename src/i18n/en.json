@@ -14,7 +14,10 @@
     "directed": "Directed",
     "undirected": "Undirected",
     "cancelDraft": "Cancel Draft (Esc)",
-    "edge": "Edge"
+    "edge": "Edge",
+    "ghosting": "Ghosting: ",
+    "on": "ON",
+    "off": "OFF"
   },
   "mode": {
     "label": "Graph input mode",
@@ -31,7 +34,8 @@
     "language": "Language",
     "autoLayout": "Auto Layout",
     "nodes": "Nodes",
-    "edges": "Edges"
+    "edges": "Edges",
+    "complexity": "Complexity"
   },
   "policy": {
     "positive": "Positive (> 0)",
@@ -44,19 +48,39 @@
     "copy": "Copy",
     "copied": "Copied!",
     "copyFailed": "Copy failed",
+    "jsonCopied": "Graph copied as JSON to clipboard!",
+    "adjListCopied": "Adjacency list copied to clipboard!",
     "png": "PNG",
-    "clear": "Clear"
+    "clear": "Clear",
+    "searchPlaceholder": "Search node ID...",
+    "tooltip": {
+      "findNode": "Find Node · Ctrl+F",
+      "commandPalette": "Command Palette · Ctrl+K",
+      "undo": "Undo · Ctrl+Z",
+      "redo": "Redo · Ctrl+Y",
+      "zoomOut": "Zoom Out · Ctrl+−",
+      "zoomIn": "Zoom In · Ctrl++",
+      "resetView": "Reset View · R",
+      "addNode": "Add Node · A",
+      "deleteSelected": "Delete Selected · Del",
+      "screenshot": "Screenshot Canvas · Ctrl+Shift+S",
+      "copyJson": "Copy JSON",
+      "copyAdjList": "Copy Adjacency List"
+    }
   },
   "contract": {
     "title": "GraphUI Output",
-    "subtitle": "Live JSON payload representation"
+    "subtitle": "Live JSON payload representation",
+    "edit": "Edit Code"
   },
   "history": {
-    "title": "History Timeline",
-    "step": "Step",
+    "title": "History",
     "undo": "Undo",
     "redo": "Redo",
-    "jump": "Jump to step"
+    "jump": "Jump to",
+    "current": "Current",
+    "cancel": "Cancel",
+    "summary": "Summary"
   },
   "metrics": {
     "title": "Graph Metrics",
@@ -70,7 +94,9 @@
     "regular": "Regular",
     "bipartite": "Bipartite",
     "planar": "Planar",
-    "empty": "Empty graph"
+    "empty": "Empty graph",
+    "tree": "Tree",
+    "forest": "Forest"
   },
   "matrix": {
     "title": "Adjacency Matrix",
@@ -100,19 +126,45 @@
     "bellman": "Bellman",
     "bellmanFord": "Bellman-Ford",
     "welshPowell": "Welsh-Powell",
-    "euler": "Eulerian Paths / Circuits"
+    "euler": "Eulerian Paths / Circuits",
+    "learn": "Learn : ",
+    "video": "Video",
+    "howItWorks": "How it works?",
+    "useCase": "Use Case",
+    "stepByStep": "Step-by-Step Explanation",
+    "status": {
+      "ready": "Ready",
+      "added": "Added",
+      "rejected": "Rejected",
+      "done": "Done",
+      "explore": "Explore",
+      "init": "Init",
+      "back": "Forward"
+    }
   },
   "help": {
-    "title": "Quick Guide",
-    "hint": "Hover for help",
-    "summary": "Common shortcuts and quick actions.",
-    "leftClick": "Left click (or N): add node",
-    "delete": "Right click node / double click edge: delete",
-    "shortcuts": "D toggle directed, W toggle weighted, Ctrl+Z/Y undo/redo",
-    "autoLayout": "Run Auto Layout",
-    "openMatrix": "Open Matrix Mode",
-    "openVisual": "Open Visual Mode",
-    "fullGuide": "Read full guide"
+    "title": "Guide & Shortcuts",
+    "summary": "Shortcuts & Navigation",
+    "fullGuide": "Read full guide",
+    "shortcuts": {
+      "title": "Keyboard Shortcuts",
+      "delete": "Delete selected element",
+      "escape": "Deselect / Cancel action",
+      "pan": "Move view (Alternative Pan mode)",
+      "undo": "Undo",
+      "redo": "Redo"
+    },
+    "mouse": {
+      "title": "Mouse Interaction",
+      "leftClick": "Left click: Create or select a node",
+      "drag": "Click + Drag (Node to Node): Create an edge",
+      "rightDrag": "Right click + Drag: Move view (Pan)",
+      "wheel": "Scroll wheel: Zoom in / out"
+    },
+    "tip": {
+      "title": "Pro Tip:",
+      "text": "Use the \"Algorithm Cinema\" panel at the top right to simulate and learn graph behavior step by step!"
+    }
   },
   "palette": {
     "placeholder": "Type a command...",
@@ -121,6 +173,11 @@
   "lang": {
     "en": "English",
     "fr": "French"
+  },
+  "team": {
+    "class": "Class",
+    "professor": "Professor",
+    "members": "Team Members"
   }
 }
 

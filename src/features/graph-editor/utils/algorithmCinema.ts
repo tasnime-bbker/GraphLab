@@ -1,7 +1,7 @@
 import type { GraphEdge, GraphState, NodeId } from '../../graph/model/types'
 import { findEulerianPathOrCircuit, buildEulerianTraceReport } from '../../graph/utils/graphAnalysis'
 
-export type CinemaAlgorithm = 'BFS' | 'DFS' | 'Dijkstra' | 'Prims' | 'Kruskals' | 'MaxFlow' | 'ConnectedComponents' | 'SpanningForest' | 'StronglyConnectedComponents' | 'Bellman' | 'BellmanFord' | 'WelshPowell' | 'EulerienPath' | 'RechercheChaine'
+export type CinemaAlgorithm = 'BFS' | 'DFS' | 'Dijkstra' | 'Prims' | 'Kruskals' | 'MaxFlow' | 'ConnectedComponents' | 'SpanningForest' | 'StronglyConnectedComponents' | 'Bellman' | 'BellmanFord' | 'WelshPowell' | 'EdgeColoring' | 'EulerienPath' | 'RechercheChaine'
 
 export interface CinemaStep {
   narration: string
@@ -198,6 +198,18 @@ function buildDfsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
 
 function buildDijkstraProgram(graph: GraphState, source: NodeId): CinemaStep[] {
   const steps: CinemaStep[] = []
+
+  // Edge Case: Negative Weights
+  const hasNegativeWeights = graph.edges.some(e => e.weight < 0)
+  if (hasNegativeWeights) {
+    steps.push({
+      narration: "⚠️ Erreur : L'algorithme de Dijkstra ne supporte pas les poids négatifs. Veuillez utiliser Bellman-Ford pour ce graphe.",
+      visited: [],
+      frontier: [],
+      treeEdges: [],
+    })
+    return steps
+  }
   const distances = new Map<NodeId, number>()
   const visited = new Set<NodeId>()
   const treeEdges: string[] = []
@@ -1613,6 +1625,66 @@ function buildWelshPowellProgram(graph: GraphState): CinemaStep[] {
   return steps
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// COLORATION DES ARÊTES (Greedy Edge Coloring)
+// ─────────────────────────────────────────────────────────────────────────────
+function buildEdgeColoringProgram(graph: GraphState): CinemaStep[] {
+  const steps: CinemaStep[] = []
+  const edgeColors: Record<string, string> = {}
+  
+  if (graph.edges.length === 0) {
+    steps.push({ narration: "Aucune arête à colorier.", visited: [], frontier: [], treeEdges: [] })
+    return steps
+  }
+
+  steps.push({
+    narration: "Début de la coloration des arêtes. Deux arêtes adjacentes ne doivent pas avoir la même couleur.",
+    visited: [],
+    frontier: [],
+    treeEdges: [],
+  })
+
+  // Sort edges by some criteria for stability
+  const sortedEdges = [...graph.edges].sort((a, b) => a.id.localeCompare(b.id))
+  
+  for (const edge of sortedEdges) {
+    // Find colors used by incident edges
+    const incidentEdgeIds = graph.edges
+      .filter(e => e.id !== edge.id && (e.from === edge.from || e.to === edge.from || e.from === edge.to || e.to === edge.to))
+      .map(e => e.id)
+    
+    const forbiddenColors = new Set(incidentEdgeIds.map(id => edgeColors[id]).filter(Boolean))
+    
+    // Pick the first available color
+    let colorIdx = 0
+    while (forbiddenColors.has(COMPONENT_COLORS[colorIdx % COMPONENT_COLORS.length])) {
+      colorIdx++
+    }
+    
+    const assignedColor = COMPONENT_COLORS[colorIdx % COMPONENT_COLORS.length]
+    edgeColors[edge.id] = assignedColor
+
+    steps.push({
+      narration: `Coloration de l'arête ${edge.from}—${edge.to} avec la couleur ${colorIdx + 1}.`,
+      visited: [],
+      frontier: [edge.from, edge.to],
+      treeEdges: [],
+      currentEdgeId: edge.id,
+      edgeColors: { ...edgeColors }
+    })
+  }
+
+  steps.push({
+    narration: `Coloration terminée ! Nombre chromatique d'arêtes (approximatif) : ${new Set(Object.values(edgeColors)).size}.`,
+    visited: [],
+    frontier: [],
+    treeEdges: [],
+    edgeColors: { ...edgeColors }
+  })
+
+  return steps
+}
+
 // buildAllCyclesProgram removed: AllCycles cinema algorithm has been deleted.
 
 export function buildCinemaProgram(
@@ -1647,6 +1719,8 @@ export function buildCinemaProgram(
         return buildStronglyConnectedComponentsProgram(graph)
       case 'WelshPowell':
         return buildWelshPowellProgram(graph)
+      case 'EdgeColoring':
+        return buildEdgeColoringProgram(graph)
       // 'AllCycles' removed — no-op fallback
       case 'Bellman':
       case 'BellmanFord':

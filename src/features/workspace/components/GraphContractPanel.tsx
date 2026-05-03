@@ -2,6 +2,7 @@ import { Button, Code, Group, Paper, Select, Stack, Text, Textarea } from '@mant
 import { useMemo, useState, useEffect } from 'react'
 import { useGraphState, useGraphDispatch } from '../../graph/state/useGraphStore'
 import { useI18n } from '../../../shared/context/I18nContext'
+import { useAppTheme } from '../../../shared/context/AppThemeContext'
 import { formatGraphForExport, type ExportFormat, svgToPngBlob } from '../utils/exportFormats'
 import { parseGraph } from '../utils/importFormats'
 
@@ -9,6 +10,7 @@ export function GraphContractPanel() {
   const { graph } = useGraphState()
   const dispatch = useGraphDispatch()
   const { t } = useI18n()
+  const { colorScheme } = useAppTheme()
   const [exportFormat, setExportFormat] = useState<ExportFormat>('json')
   const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle')
   
@@ -131,11 +133,21 @@ export function GraphContractPanel() {
             <Group gap="xs">
               {isEditing ? (
                 <>
-                  <button className="btn-premium !bg-blue-700 hover:!bg-blue-600" onClick={handleApply}>
-                    Apply Changes
+                  <button 
+                    className={`btn-premium transition-all ${
+                      colorScheme === 'dark' ? '!bg-blue-700 hover:!bg-blue-600' : '!bg-blue-600 hover:!bg-blue-500 shadow-md'
+                    } !text-white`} 
+                    onClick={handleApply}
+                  >
+                    {t('matrix.apply')}
                   </button>
-                  <button className="btn-premium !bg-slate-600 hover:!bg-slate-500" onClick={() => setIsEditing(false)}>
-                    Cancel
+                  <button 
+                    className={`btn-premium transition-all ${
+                      colorScheme === 'dark' ? '!bg-slate-600 hover:!bg-slate-500' : '!bg-slate-200 hover:!bg-slate-300 !text-slate-700 border-slate-300 shadow-sm'
+                    }`} 
+                    onClick={() => setIsEditing(false)}
+                  >
+                    {t('history.cancel')}
                   </button>
                 </>
               ) : (
@@ -143,7 +155,7 @@ export function GraphContractPanel() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
-                  Edit Code
+                  {t('contract.edit')}
                 </button>
               )}
             </Group>

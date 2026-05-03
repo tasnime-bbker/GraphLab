@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ActionIcon, Tooltip } from '@mantine/core'
+import { useI18n } from '../../../shared/context/I18nContext'
 
 export function CanvasHelp() {
+  const { t } = useI18n()
   const [opened, setOpened] = useState(false)
 
   const ShortcutItem = ({ keys, description }: { keys: string[], description: string }) => (
@@ -32,7 +34,7 @@ export function CanvasHelp() {
 
   return (
     <>
-      <Tooltip label="Guide & Raccourcis" position="bottom" withArrow>
+      <Tooltip label={t('help.title')} position="bottom" withArrow>
         <ActionIcon 
           variant="light" 
           color="blue" 
@@ -61,7 +63,7 @@ export function CanvasHelp() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-white tracking-wide">GraphLab <span className="text-blue-400">Guide</span></h2>
-                  <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold mt-1">Raccourcis & Navigation</p>
+                  <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold mt-1">{t('help.summary')}</p>
                 </div>
               </div>
               
@@ -84,24 +86,24 @@ export function CanvasHelp() {
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
                   </svg>
-                  Manipulation (Souris)
+                  {t('help.mouse.title')}
                 </h3>
                 <div className="space-y-3">
                   <MouseItem 
                     icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>}
-                    description="Clic gauche : Créer ou sélectionner un nœud"
+                    description={t('help.mouse.leftClick')}
                   />
                   <MouseItem 
                     icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>}
-                    description="Clic + Glisser (Nœud à Nœud) : Créer une arête"
+                    description={t('help.mouse.drag')}
                   />
                   <MouseItem 
                     icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>}
-                    description="Clic droit + Glisser : Déplacer la vue (Pan)"
+                    description={t('help.mouse.rightDrag')}
                   />
                   <MouseItem 
                     icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>}
-                    description="Molette : Zoom avant / arrière"
+                    description={t('help.mouse.wheel')}
                   />
                 </div>
               </div>
@@ -112,14 +114,14 @@ export function CanvasHelp() {
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                   </svg>
-                  Raccourcis Clavier
+                  {t('help.shortcuts.title')}
                 </h3>
                 <div className="space-y-3">
-                  <ShortcutItem keys={["Suppr", "Retour Arr."]} description="Supprimer l'élément sélectionné" />
-                  <ShortcutItem keys={["Échap"]} description="Désélectionner / Annuler l'action" />
-                  <ShortcutItem keys={["Espace", "Clic Gauche"]} description="Déplacer la vue (Mode Pan alternatif)" />
-                  <ShortcutItem keys={["Ctrl", "Z"]} description="Annuler (Undo)" />
-                  <ShortcutItem keys={["Ctrl", "Y"]} description="Rétablir (Redo)" />
+                  <ShortcutItem keys={[t('lang.fr') === 'Français' ? 'Suppr' : 'Del', t('lang.fr') === 'Français' ? 'Retour Arr.' : 'Backspace']} description={t('help.shortcuts.delete')} />
+                  <ShortcutItem keys={["Esc"]} description={t('help.shortcuts.escape')} />
+                  <ShortcutItem keys={["Space", "Left Click"]} description={t('help.shortcuts.pan')} />
+                  <ShortcutItem keys={["Ctrl", "Z"]} description={t('help.shortcuts.undo')} />
+                  <ShortcutItem keys={["Ctrl", "Y"]} description={t('help.shortcuts.redo')} />
                 </div>
               </div>
             </div>
@@ -130,7 +132,7 @@ export function CanvasHelp() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               <p className="text-sm text-blue-200/90 leading-relaxed font-medium">
-                <strong className="text-blue-300">Astuce Pro :</strong> Utilisez le panneau "Cinéma des Algorithmes" en haut à droite pour simuler et apprendre le comportement des graphes étape par étape !
+                <strong className="text-blue-300">{t('help.tip.title')}</strong> {t('help.tip.text')}
               </p>
             </div>
           </div>

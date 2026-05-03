@@ -31,25 +31,25 @@ const SPEED_OPTIONS = [0.5, 1, 2, 4]
 const MST_ALGORITHMS: CinemaAlgorithm[] = ['Prims', 'Kruskals']
 
 /** Derive a human-readable step type badge from a CinemaStep */
-function getStepBadge(step: CinemaStep | null | undefined, algorithm: CinemaAlgorithm): {
+function getStepBadge(step: CinemaStep | null | undefined, algorithm: CinemaAlgorithm, t: (key: string) => string): {
   label: string
   color: string
   bg: string
 } {
-  if (!step) return { label: 'Prêt', color: '#64748b', bg: 'rgba(100,116,139,0.12)' }
+  if (!step) return { label: t('cinema.status.ready'), color: '#64748b', bg: 'rgba(100,116,139,0.12)' }
 
   if (step.mstNewEdgeId)
-    return { label: '✅ Ajouté', color: '#22c55e', bg: 'rgba(34,197,94,0.12)' }
+    return { label: `✅ ${t('cinema.status.added')}`, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' }
   if (step.rejectedEdgeId)
-    return { label: '❌ Rejeté', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' }
+    return { label: `❌ ${t('cinema.status.rejected')}`, color: '#ef4444', bg: 'rgba(239,68,68,0.12)' }
   if (MST_ALGORITHMS.includes(algorithm) && (step.mstEdges?.length ?? 0) > 0 && !step.currentEdgeId)
-    return { label: '🏁 Terminé', color: '#6366f1', bg: 'rgba(99,102,241,0.12)' }
+    return { label: `🏁 ${t('cinema.status.done')}`, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' }
   if (step.currentEdgeId)
-    return { label: '🔍 Explore', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' }
+    return { label: `🔍 ${t('cinema.status.explore')}`, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' }
   if ((step.visited?.length ?? 0) <= 1)
-    return { label: '🚀 Init', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' }
+    return { label: `🚀 ${t('cinema.status.init')}`, color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' }
 
-  return { label: '↩ Avance', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' }
+  return { label: `↩ ${t('cinema.status.back')}`, color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' }
 }
 
 export function AlgorithmCinemaPanel({
@@ -79,7 +79,7 @@ export function AlgorithmCinemaPanel({
   const requiresTarget = algorithm === 'MaxFlow' || algorithm === 'RechercheChaine'
   const disabled = stepCount === 0
   const isMst = MST_ALGORITHMS.includes(algorithm)
-  const badge = getStepBadge(currentStep, algorithm)
+  const badge = getStepBadge(currentStep, algorithm, t)
   const progress = stepCount > 1 ? (currentIndex / (stepCount - 1)) * 100 : 0
   const mstWeight = currentStep?.mstWeight
 
@@ -203,16 +203,20 @@ export function AlgorithmCinemaPanel({
 
           <input
             type="range"
-            className="flex-1 accent-blue-500"
+            className="flex-1 accent-blue-500 h-1.5 cursor-pointer"
             min={0}
             max={Math.max(stepCount - 1, 0)}
             value={Math.min(currentIndex, Math.max(stepCount - 1, 0))}
             onChange={(e) => onScrub(Number(e.currentTarget.value))}
             disabled={disabled}
+            style={{ 
+              opacity: disabled ? 0.3 : 1,
+              filter: 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.2))'
+            }}
           />
 
           <div className="flex flex-col items-end min-w-[70px]">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Step</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{t('cinema.step')}</span>
             <span className="text-xs font-mono font-bold" style={{ color: 'var(--app-text)' }}>
               {disabled ? 0 : currentIndex + 1} / {stepCount}
             </span>
@@ -221,15 +225,20 @@ export function AlgorithmCinemaPanel({
 
         {/* ── Footer: Speed + Status ──────────────────────────────────── */}
         <div className="flex items-center justify-between pt-1">
-          <div className="flex rounded-lg overflow-hidden border border-blue-200/40 dark:border-slate-400/30 text-[10px] font-bold shadow-sm">
+          <div className="flex rounded-xl overflow-hidden border border-blue-200/40 dark:border-slate-700/50 text-[11px] font-bold shadow-md">
             {SPEED_OPTIONS.map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => onSpeedChange(s)}
-                className={`px-3 py-1 transition-all ${speed === s ? 'bg-blue-600 text-white dark:bg-slate-600 dark:text-slate-100 shadow-inner' : 'bg-blue-100/30 hover:bg-blue-200/50 dark:bg-slate-200/50 dark:hover:bg-slate-300/50'}`}
+                className={`px-4 py-2 transition-all duration-200 ${
+                  speed === s 
+                    ? 'bg-blue-600 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]' 
+                    : 'bg-white/10 dark:bg-black/20 hover:bg-white/20 dark:hover:bg-black/40'
+                }`}
                 style={{
-                  color: speed === s ? undefined : 'var(--app-muted)',
+                  color: speed === s ? '#ffffff' : 'var(--app-text)',
+                  opacity: speed === s ? 1 : 0.7
                 }}
               >
                 {s}×

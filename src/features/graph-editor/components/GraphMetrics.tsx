@@ -28,6 +28,10 @@ function translateGraphTypeLabel(label: string, t: (key: string) => string): str
       return t('metrics.planar')
     case 'empty':
       return t('metrics.empty')
+    case 'tree':
+      return t('metrics.tree')
+    case 'forest':
+      return t('metrics.forest')
     default:
       return label
   }
@@ -125,20 +129,43 @@ function detectGraphTypes(
     if (gA.length > 0 && gB.length > 0) {
       const isCompleteBipartite = logicalEdgeCount === (gA.length * gB.length);
       types.push(isCompleteBipartite
-        ? { label: 'Biparti complet', color: '#34d399' }
-        : { label: 'Biparti', color: '#6ee7b7' }
+        ? { label: 'bipartite complete', color: '#34d399' }
+        : { label: 'bipartite', color: '#6ee7b7' }
       );
     }
   }
 
   // ── Planaire (Euler's formula e <= 3n - 6)
   if (n > 2 && !directed && logicalEdgeCount <= 3 * n - 6) {
-    types.push({ label: 'Planaire', color: '#fb923c' });
+    types.push({ label: 'planar', color: '#fb923c' });
   } else if (n <= 2) {
-    types.push({ label: 'Planaire', color: '#fb923c' });
+    types.push({ label: 'planar', color: '#fb923c' });
   }
 
-  if (logicalEdgeCount === 0) types.push({ label: 'Graphe nul', color: '#64748b' });
+  if (logicalEdgeCount === 0) types.push({ label: 'empty', color: '#64748b' });
+
+  // ── Tree / Forest (Undirected)
+  if (!directed && n > 0) {
+    // Check connectivity for Tree
+    const visited = new Set<NodeId>();
+    const queue = [nodes[0]];
+    visited.add(nodes[0]);
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      for (const e of edges) {
+        const nb = e.from === cur ? e.to : e.to === cur ? e.from : null;
+        if (nb !== null && !visited.has(nb)) {
+          visited.add(nb);
+          queue.push(nb);
+        }
+      }
+    }
+    const isConnected = visited.size === n;
+    if (logicalEdgeCount === n - 1) {
+      if (isConnected) types.push({ label: 'tree', color: '#10b981' });
+      else types.push({ label: 'forest', color: '#059669' });
+    }
+  }
 
   return types;
 }
