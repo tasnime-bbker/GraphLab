@@ -1018,8 +1018,8 @@ export function GraphCanvas() {
           </div>
         </div>
 
-        <div className="flex items-start gap-2 self-start">
-          <div style={{ marginRight: 32, display: 'flex', gap: 12 }}>
+        <div className="flex flex-wrap items-start gap-2 self-start sm:self-center w-full sm:w-auto">
+          <div className="flex flex-wrap gap-2 md:gap-3 mr-0 md:mr-8">
             <button
               className="btn-premium"
               onClick={() => window.dispatchEvent(new CustomEvent('graph:auto-layout'))}
@@ -1089,7 +1089,7 @@ export function GraphCanvas() {
 
       <div className="border-b p-3 md:p-4 space-y-3" style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface)' }}>
         <form
-          className="flex items-center gap-2"
+          className="flex flex-wrap items-center gap-2"
           onSubmit={(event) => {
             event.preventDefault()
             runQueryCommand(queryInput)

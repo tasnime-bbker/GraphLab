@@ -85,16 +85,17 @@ export function AlgorithmCinemaPanel({
 
   return (
     <div
-      className="rounded-2xl border shadow-lg overflow-hidden glass-panel"
-      style={{ backgroundColor: 'var(--app-surface)', minWidth: '420px' }}
+      className="rounded-2xl border shadow-lg overflow-hidden glass-panel w-full max-w-[420px] mx-auto md:max-w-none md:w-auto"
+      style={{ backgroundColor: 'var(--app-surface)' }}
     >
       {/* ── Progress bar ──────────────────────────────────────────────────── */}
-      <div className="h-1.5 w-full relative bg-slate-200/20 overflow-hidden">
+      <div className="h-1.5 w-full relative bg-blue-200/30 dark:bg-slate-400/20 overflow-hidden">
         <div
           className={`h-full transition-all duration-400 ease-out ${!disabled && progress > 0 ? 'progress-bar-shimmer' : ''}`}
           style={{
             width: `${disabled ? 0 : progress}%`,
-            background: disabled || progress === 0 ? 'transparent' : undefined,
+            background: disabled || progress === 0 ? 'transparent' : 'var(--app-accent)',
+            opacity: 0.8
           }}
         />
       </div>
@@ -174,31 +175,31 @@ export function AlgorithmCinemaPanel({
 
         {/* ── Playback controls + Scrubber ──────────────────────────────── */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-slate-200/10 p-1 rounded-xl border border-white/5">
-            <button className="btn-icon p-1.5" onClick={onRewind} disabled={disabled} title="Rewind">
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-            </button>
-            <button className="btn-icon p-1.5" onClick={onStepBack} disabled={disabled} title="Prev">
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm14 0-8.5 6 8.5 6V6z"/></svg>
-            </button>
-            <button 
-              className={`btn-icon p-2 rounded-full ${playing ? 'bg-blue-500/20 text-blue-400' : ''}`} 
-              onClick={onPlayPause} 
-              disabled={disabled}
-            >
-              {playing ? (
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>
-              ) : (
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-              )}
-            </button>
-            <button className="btn-icon p-1.5" onClick={onStepForward} disabled={disabled} title="Next">
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="m6 18 8.5-6L6 6v12zm2.5-6L16 6v12z"/></svg>
-            </button>
-            <button className="btn-icon p-1.5" onClick={onFastForward} disabled={disabled} title="Fast Forward">
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="m4 18 8.5-6L4 6v12zm9 0 8.5-6L13 6v12z"/></svg>
-            </button>
-          </div>
+        <div className="flex items-center gap-1 bg-blue-100/30 dark:bg-slate-300/20 p-1.5 rounded-xl border border-blue-200/20 dark:border-slate-400/10 shadow-inner">
+          <button className="btn-icon p-1.5 hover:text-blue-600 transition-colors" onClick={onRewind} disabled={disabled} title="Rewind">
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+          </button>
+          <button className="btn-icon p-1.5 hover:text-blue-600 transition-colors" onClick={onStepBack} disabled={disabled} title="Prev">
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm14 0-8.5 6 8.5 6V6z"/></svg>
+          </button>
+          <button 
+            className={`btn-icon p-2 rounded-full transition-all ${playing ? 'bg-blue-600/20 text-blue-700 shadow-sm' : 'hover:bg-slate-300/30'}`} 
+            onClick={onPlayPause} 
+            disabled={disabled}
+          >
+            {playing ? (
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>
+            ) : (
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            )}
+          </button>
+          <button className="btn-icon p-1.5 hover:text-blue-600 transition-colors" onClick={onStepForward} disabled={disabled} title="Next">
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="m6 18 8.5-6L6 6v12zm2.5-6L16 6v12z"/></svg>
+          </button>
+          <button className="btn-icon p-1.5 hover:text-blue-600 transition-colors" onClick={onFastForward} disabled={disabled} title="Fast Forward">
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="m4 18 8.5-6L4 6v12zm9 0 8.5-6L13 6v12z"/></svg>
+          </button>
+        </div>
 
           <input
             type="range"
@@ -220,15 +221,15 @@ export function AlgorithmCinemaPanel({
 
         {/* ── Footer: Speed + Status ──────────────────────────────────── */}
         <div className="flex items-center justify-between pt-1">
-          <div className="flex rounded-lg overflow-hidden border border-slate-200/20 text-[10px] font-bold">
+          <div className="flex rounded-lg overflow-hidden border border-blue-200/40 dark:border-slate-400/30 text-[10px] font-bold shadow-sm">
             {SPEED_OPTIONS.map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => onSpeedChange(s)}
-                className={`px-3 py-1 transition-all ${speed === s ? 'bg-blue-600 text-white' : 'hover:bg-blue-500/10'}`}
+                className={`px-3 py-1 transition-all ${speed === s ? 'bg-blue-600 text-white dark:bg-slate-600 dark:text-slate-100 shadow-inner' : 'bg-blue-100/30 hover:bg-blue-200/50 dark:bg-slate-200/50 dark:hover:bg-slate-300/50'}`}
                 style={{
-                  color: speed === s ? '#fff' : 'var(--app-muted)',
+                  color: speed === s ? undefined : 'var(--app-muted)',
                 }}
               >
                 {s}×

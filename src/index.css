@@ -6,24 +6,66 @@
 @layer base {
   :root {
     color-scheme: light;
-    --app-bg-1: #f0f9ff;
-    --app-bg-2: #e0f2fe;
-    --app-bg-3: #d1edff;
-    --app-text: #0f172a;
-    --app-muted: #475569;
-    --app-surface: rgba(255, 255, 255, 0.88);
-    --app-surface-strong: #ffffff;
-    --app-border: rgba(14, 165, 233, 0.25);
-    --app-accent: #0078d7;
+    --app-bg-1: #dae8f5;       /* Dim Pastel Blue */
+    --app-bg-2: #cddff0;       /* Soft Blue-Grey */
+    --app-bg-3: #aebfd4;       /* Muted Contrast */
+    --app-text: #192b45;       /* Deep Navy (Softer than black) */
+    --app-muted: #546a85;      /* Slate Blue */
+    --app-surface: rgba(228, 240, 250, 0.85); /* Frosted Dim Blue */
+    --app-surface-strong: #e4f0fa;           /* Solid Dim Blue */
+    --app-border: rgba(14, 165, 233, 0.25);  /* Subtle Cyan Border */
+    --app-accent: #0274b3;                   /* Muted Cyan-Blue */
   }
 
   body {
     @apply m-0 antialiased;
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: var(--app-text);
-    background: linear-gradient(135deg, var(--app-bg-1) 0%, var(--app-bg-2) 50%, var(--app-bg-3) 100%);
-    background-attachment: fixed;
+    background-color: var(--app-bg-1); /* Fallback */
+    transition: color 0.6s ease-in-out;
     min-height: 100vh;
+  }
+
+  /* Ultra-Premium Royale Light Mode Background (Mesh + Glass) */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: 
+      /* Very subtle Warm/Gold Royale reflection top right */
+      radial-gradient(ellipse at 95% 5%, rgba(212, 175, 55, 0.06) 0%, transparent 40%),
+      /* Sharp Glass Diagonal (Premium Edge Highlight) */
+      linear-gradient(115deg, 
+        transparent 35%, 
+        rgba(255, 255, 255, 0.6) 45%, 
+        rgba(30, 58, 138, 0.15) 50%, 
+        rgba(30, 58, 138, 0.04) 55%, 
+        transparent 70%
+      ),
+      /* Glowing Sky Blue Orb Top Left */
+      radial-gradient(circle at 10% 15%, rgba(14, 165, 233, 0.18) 0%, transparent 50%),
+      /* Glowing Indigo Orb Bottom Right */
+      radial-gradient(circle at 85% 90%, rgba(79, 70, 229, 0.12) 0%, transparent 50%),
+      /* Rich Pristine Blue Base Gradient */
+      linear-gradient(145deg, #f4faff 0%, #e2effa 45%, #cfdaf5 100%);
+    z-index: -2;
+    pointer-events: none;
+  }
+
+  /* Smooth Dark Mode Gradient Transition (Fades in over Light Mode) */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, #020617 0%, #050f1f 50%, #071426 100%);
+    opacity: 0;
+    transition: opacity 0.6s ease-in-out;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  [data-mantine-color-scheme='dark'] body::before {
+    opacity: 1;
   }
 
   [data-mantine-color-scheme='dark'] body {
@@ -93,7 +135,7 @@
 
   /* Fixed background for query input in light mode */
   :root .glass-input {
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--app-surface-strong);
   }
 
   [data-mantine-color-scheme='dark'] .glass-input {

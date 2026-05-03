@@ -238,6 +238,7 @@
   width: 100%;
   height: 100%;
   isolation: isolate;
+  transition: background 0.6s ease-in-out, background-color 0.6s ease-in-out;
 }
 
 [data-mantine-color-scheme='dark'] .canvas-container {
@@ -245,9 +246,34 @@
   animation: surface-breath 24s linear infinite;
 }
 
+/* Base light mode container color */
 [data-mantine-color-scheme='light'] .canvas-container {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  background-color: var(--app-bg-1);
   animation: none;
+}
+
+/* Premium Royale Light Mode Gradient for Canvas */
+.canvas-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    linear-gradient(135deg, 
+      transparent 35%, 
+      rgba(30, 58, 138, 0.06) 45%, 
+      rgba(30, 58, 138, 0.25) 50%, 
+      rgba(30, 58, 138, 0.06) 55%, 
+      transparent 65%
+    ),
+    linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 45%, #bae6fd 100%);
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-mantine-color-scheme='light'] .canvas-container::before {
+  opacity: 1;
 }
 
 /* ── PRIMARY glow orb ── */

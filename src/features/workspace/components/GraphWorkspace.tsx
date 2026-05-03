@@ -45,7 +45,7 @@ export function GraphWorkspace() {
 
           <div className={`grid grid-cols-1 gap-6 transition-all duration-500 ${isDevMode ? 'xl:grid-cols-[1fr_400px]' : 'xl:grid-cols-1'}`}>
             <Stack gap="md">
-              <Paper withBorder radius="md" className="relative overflow-hidden p-1 min-h-[600px]">
+              <Paper withBorder radius="md" className="relative overflow-hidden p-1 min-h-[50vh] md:min-h-[600px]">
                 {mode === 'visual' ? <GraphCanvas /> : <MatrixEditor />}
               </Paper>
               <GraphHistoryTimeline />

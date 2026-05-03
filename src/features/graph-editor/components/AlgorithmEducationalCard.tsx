@@ -252,17 +252,17 @@ export function AlgorithmEducationalCard({ algorithm }: Props) {
       <div 
         className={`overflow-hidden transition-all duration-500 ease-in-out ${isOpen ? 'max-h-[800px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}
       >
-        <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-200 dark:border-slate-700/50 space-y-4">
+        <div className="bg-blue-100/20 dark:bg-slate-800/40 rounded-xl p-4 border border-blue-200/40 dark:border-slate-700/50 space-y-4">
           
           {/* Tab Switcher */}
-          <div className="flex p-1 bg-slate-200 dark:bg-slate-900/50 rounded-lg overflow-x-auto custom-scrollbar">
+          <div className="flex p-1 bg-blue-100/50 dark:bg-slate-900/50 rounded-lg overflow-x-auto custom-scrollbar">
             <button
               type="button"
               onClick={() => setViewMode('summary')}
               className={`flex-1 min-w-[100px] text-xs font-bold uppercase tracking-wider py-2 rounded-md transition-all ${
                 viewMode === 'summary' 
-                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  ? 'bg-blue-500/10 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 shadow-sm' 
+                  : 'text-slate-500 hover:text-blue-600 dark:hover:text-slate-300'
               }`}
             >
               Résumé
@@ -296,14 +296,14 @@ export function AlgorithmEducationalCard({ algorithm }: Props) {
           {viewMode === 'summary' && (
             <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
               <div>
-                <h4 className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 tracking-widest mb-1.5">Comment ça marche ?</h4>
-                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                <h4 className="text-xs font-black uppercase text-blue-700 dark:text-blue-400 tracking-widest mb-1.5">Comment ça marche ?</h4>
+                <p className="text-sm text-slate-800 dark:text-slate-300 leading-relaxed font-medium">
                   {info.description}
                 </p>
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white dark:bg-slate-900/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700/30 shadow-sm dark:shadow-none">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-blue-100/40 dark:bg-slate-900/50 rounded-lg p-3 border border-blue-200/30 dark:border-slate-700/30 shadow-sm dark:shadow-none">
                   <h4 className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest mb-1.5 flex items-center gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
@@ -315,7 +315,7 @@ export function AlgorithmEducationalCard({ algorithm }: Props) {
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700/30 shadow-sm dark:shadow-none">
+                <div className="bg-blue-100/40 dark:bg-slate-900/50 rounded-lg p-3 border border-blue-200/30 dark:border-slate-700/30 shadow-sm dark:shadow-none">
                   <h4 className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-widest mb-1.5 flex items-center gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />

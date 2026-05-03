@@ -45,7 +45,7 @@ export function MatrixEditor() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <label className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--app-muted)' }}>
             {t('matrix.nodes')}:
             <input
               type="number"
@@ -120,7 +120,7 @@ export function MatrixEditor() {
                     const value = matrixDraft[rowIndex]?.[colIndex] ?? '0'
                     const isZero = value === '0' || value === ''
                     return (
-                      <td key={`${rowNodeId}-${columnNodeId}`} className={`border border-slate-800/50 ${cellPadding} text-center transition-colors`}>
+                      <td key={`${rowNodeId}-${columnNodeId}`} className={`border ${cellPadding} text-center transition-colors`} style={{ borderColor: 'var(--app-border)' }}>
                         <input
                           inputMode="numeric"
                           className={`${inputWidth} ${inputHeight} rounded-md px-1 text-center font-medium transition-all focus:outline-none focus:ring-1 focus:z-10 shadow-inner ${fontSize}`}

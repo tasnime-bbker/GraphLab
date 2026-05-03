@@ -1,6 +1,6 @@
 @keyframes toolbar-appear {
-  from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes shutter-flash {
@@ -26,17 +26,21 @@
 
 .canvas-toolbar-container {
   position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  margin: 0 auto;
   z-index: 20;
-  height: 48px;
-  padding: 0 12px;
+  min-height: 48px;
+  width: fit-content;
+  padding: 6px 12px;
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: 2px;
-  border-radius: 999px;
+  gap: 4px;
+  border-radius: 24px;
   background: var(--app-surface);
   backdrop-filter: blur(24px);
   border: 1px solid var(--app-border);
@@ -45,7 +49,7 @@
 }
 
 [data-theme='light'] .canvas-toolbar-container {
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,120,215,0.15), inset 0 1px 0 rgba(255,255,255,0.8);
+  box-shadow: 0 4px 20px rgba(0, 120, 215, 0.1), 0 0 0 1px rgba(14, 165, 233, 0.15), inset 0 1px 0 rgba(255,255,255,0.8);
 }
 
 .toolbar-divider {
@@ -225,7 +229,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: white;
+  background: #bae6fd;
   pointer-events: none;
   z-index: 100;
   opacity: 0;
