@@ -1493,74 +1493,114 @@ function buildStronglyConnectedComponentsProgram(graph: GraphState): CinemaStep[
   if (!graph.directed) {
     steps.push({
       narration: 'SCC nécessite un graphe orienté.',
-      visited: [],
-      frontier: [],
-      treeEdges: [],
+      visited: [], frontier: [], treeEdges: [],
     })
     return steps
   }
 
-  const visited = new Set<NodeId>()
-  const stack: NodeId[] = []
+  // ── Phase 1 : Kosaraju — 1er DFS pour remplir la pile d'ordre de fin ──────
+  const visited1 = new Set<NodeId>()
+  const finishStack: NodeId[] = []
 
-  function dfs(node: NodeId) {
-    visited.add(node)
+  function dfs1(node: NodeId): void {
+    visited1.add(node)
     for (const n of neighborsFor(graph, node)) {
-      if (!visited.has(n.nodeId)) dfs(n.nodeId)
+      if (!visited1.has(n.nodeId)) dfs1(n.nodeId)
     }
-    stack.push(node)
+    finishStack.push(node)
   }
 
-  // 1er passage
   for (const node of graph.nodes) {
-    if (!visited.has(node)) dfs(node)
+    if (!visited1.has(node)) dfs1(node)
   }
 
-  // Inverser le graphe
+  // ── Phase 2 : graphe transposé ────────────────────────────────────────────
   const reversed: GraphState = {
     ...graph,
-    edges: graph.edges.map(e => ({
-      ...e,
-      from: e.to,
-      to: e.from,
-    })),
+    edges: graph.edges.map(e => ({ ...e, from: e.to, to: e.from })),
   }
 
-  visited.clear()
+  // ── Phase 3 : 2e DFS sur le graphe transposé — chaque arbre = 1 SCC ───────
+  const visited2 = new Set<NodeId>()
+  const nodeColors: Record<number, string> = {}
+  const componentMembers: NodeId[][] = []
   let componentIndex = 0
 
-  function dfs2(node: NodeId, comp: NodeId[]) {
-    visited.add(node)
+  function buildColorGroups(): Array<{ color: string; nodeIds: NodeId[] }> {
+    return componentMembers.map((members, idx) => ({
+      color: COMPONENT_COLORS[idx % COMPONENT_COLORS.length],
+      nodeIds: [...members],
+    }))
+  }
+
+  function dfs2(node: NodeId, comp: NodeId[], color: string): void {
+    visited2.add(node)
+    nodeColors[node] = color
     comp.push(node)
-
     for (const n of neighborsFor(reversed, node)) {
-      if (!visited.has(n.nodeId)) dfs2(n.nodeId, comp)
+      if (!visited2.has(n.nodeId)) dfs2(n.nodeId, comp, color)
     }
   }
 
-  while (stack.length > 0) {
-    const node = stack.pop()!
-
-    if (!visited.has(node)) {
-      const comp: NodeId[] = []
-      dfs2(node, comp)
-
-      steps.push({
-        narration: `Composante fortement connexe C${componentIndex + 1} : {${comp.join(', ')}}`,
-        visited: [...comp],
-        frontier: [],
-        treeEdges: [],
-      })
-
-      componentIndex++
-    }
-  }
-
+  // Étape initiale
   steps.push({
-    narration: `Total SCC trouvées : ${componentIndex}`,
+    narration: 'Début de la détection des composantes fortement connexes (Kosaraju). Chaque SCC sera colorée différemment.',
     visited: [],
     frontier: [],
     treeEdges: [],
+    nodeColors: {},
+  })
+
+  steps.push({
+    narration: `Phase 1 terminée — ordre de fin de DFS : [${finishStack.join(', ')}]. On va dépiler dans l'ordre inverse sur le graphe transposé.`,
+    visited: [],
+    frontier: [],
+    treeEdges: [],
+    nodeColors: {},
+  })
+
+  // Phase 3 principale
+  while (finishStack.length > 0) {
+    const node = finishStack.pop()!
+    if (visited2.has(node)) continue
+
+    const comp: NodeId[] = []
+    const color = COMPONENT_COLORS[componentIndex % COMPONENT_COLORS.length]
+    componentMembers.push(comp)
+
+    // Étape : début de la nouvelle SCC
+    steps.push({
+      narration: `Nouvelle SCC C${componentIndex + 1} — DFS depuis le nœud ${node} sur le graphe transposé.`,
+      visited: [...visited2],
+      frontier: [node],
+      treeEdges: [],
+      nodeColors: { ...nodeColors },
+      colorGroups: buildColorGroups(),
+    })
+
+    dfs2(node, comp, color)
+
+    // Étape : SCC complète avec highlight
+    steps.push({
+      narration: `SCC C${componentIndex + 1} complète : {${comp.join(', ')}}.`,
+      visited: [...visited2],
+      frontier: [],
+      treeEdges: [],
+      nodeColors: { ...nodeColors },
+      colorGroups: buildColorGroups(),
+    })
+
+    componentIndex++
+  }
+
+  // Étape finale
+  steps.push({
+    narration: `Terminé ! ${componentIndex} composante(s) fortement connexe(s) détectée(s).`,
+    visited: [...visited2],
+    frontier: [],
+    treeEdges: [],
+    nodeColors: { ...nodeColors },
+    colorGroups: buildColorGroups(),
   })
 
   return steps
