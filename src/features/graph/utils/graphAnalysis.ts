@@ -443,13 +443,13 @@ export function analyzeEulerianProperties(
   }
 
   return {
-    isConnexe,
-    oddDegreeCount,
-    oddNodes,
-    isEulerianGraph,
-    hasEulerianCircuitOrCycle: isEulerianGraph,
+    isConnexe, // Le graphe est-il connexe?
+    oddDegreeCount, // Nombre de sommets de degré impair
+    oddNodes,// Quels sont ces sommets?
+    isEulerianGraph, // Existe-t-il un CIRCUIT eulérien?
+    hasEulerianCircuitOrCycle: isEulerianGraph,// Existe-t-il un CHEMIN eulérien?
     hasEulerianPathOrChain,
-    ruleMatched
+    ruleMatched // Message expliquant la décision
   };
 }
 
@@ -676,14 +676,32 @@ export function buildEulerianTraceReport(
   let verdictMessage = '';
 
   if (!properties.isConnexe) {
-    chainMessage = 'Le graphe est non connexe, aucune chaîne ou cycle eulérien ne peut exister.';
+    verdictMessage = directed 
+      ? 'Le graphe est non connexe. Aucun chemin ni circuit eulérien ne peut exister.'
+      : 'Le graphe est non connexe. Aucune chaîne ni cycle eulérien ne peut exister.';
   } else if (properties.isEulerianGraph) {
-    chainMessage = 'Le graphe admet une chaîne eulérienne.';
-    cycleMessage = 'Le graphe est eulérien (il admet un cycle eulérien).';
+    // Graphe eulérien : afficher SEULEMENT le cycle/circuit
+    const traceStr = cycleTrace ? cycleTrace.join(' → ') : '';
+    if (directed) {
+      cycleMessage = `Le graphe est eulérien (il admet un circuit eulérien): ${traceStr}`;
+    } else {
+      cycleMessage = `Le graphe est eulérien (il admet un cycle eulérien): ${traceStr}`;
+    }
+    chainMessage = ''; // Ne pas afficher la chaîne si cycle existe
   } else if (properties.hasEulerianPathOrChain) {
-    chainMessage = 'Le graphe admet une chaîne eulérienne.';
+    // Afficher SEULEMENT la chaîne/chemin
+    const traceStr = chainTrace ? chainTrace.join(' → ') : '';
+    if (directed) {
+      chainMessage = `Le graphe admet un chemin eulérien: ${traceStr}`;
+    } else {
+      chainMessage = `Le graphe admet une chaîne eulérienne: ${traceStr}`;
+    }
+    cycleMessage = ''; // Ne pas afficher le cycle si seulement chaîne existe
   } else {
-    verdictMessage = 'Le graphe n’admet ni chaîne ni cycle eulérien.';
+    // Aucune chaîne ni cycle/chemin ni circuit
+    verdictMessage = directed
+      ? 'Le graphe n\'admet ni chemin ni circuit eulérien.'
+      : 'Le graphe n\'admet ni chaîne ni cycle eulérien.';
   }
 
   return {
