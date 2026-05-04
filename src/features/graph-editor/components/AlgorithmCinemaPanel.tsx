@@ -2,6 +2,7 @@ import type { NodeId } from '../../graph/model/types'
 import type { CinemaAlgorithm } from '../utils/algorithmCinema'
 import { useI18n } from '../../../shared/context/I18nContext'
 import { AlgorithmEducationalCard } from './AlgorithmEducationalCard'
+import type { CinemaStep } from '../utils/algorithmCinema'
 
 interface AlgorithmCinemaPanelProps {
   nodes: NodeId[]
@@ -276,7 +277,44 @@ export function AlgorithmCinemaPanel({
             {narration || t('cinema.narration')}
           </p>
         </div>
-
+{/* ── SCC Summary (composant réduit) ──────────────────────────── */}
+{algorithm === 'StronglyConnectedComponents' &&
+  currentStep?.colorGroups &&
+  currentStep.colorGroups.length > 0 && (
+  <div
+    className="rounded-xl px-3 py-2.5 text-xs font-medium"
+    style={{ backgroundColor: 'var(--app-surface-strong)' }}
+  >
+    <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">
+      Composantes fortement connexes
+    </div>
+    <div className="flex flex-wrap gap-1.5">
+      {currentStep.colorGroups.map((group, idx) => (
+        <span
+          key={idx}
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold"
+          style={{
+            backgroundColor: group.color + '22',
+            color: group.color,
+            border: `1px solid ${group.color}55`,
+          }}
+        >
+          {/* Pastille de couleur */}
+          <span
+            className="inline-block rounded-full"
+            style={{
+              width: 7,
+              height: 7,
+              backgroundColor: group.color,
+              flexShrink: 0,
+            }}
+          />
+          C{idx + 1} : {'{' + group.nodeIds.join(', ') + '}'}
+        </span>
+      ))}
+    </div>
+  </div>
+)}
         {/* ── Educational Section ─────────────────────────────────────────── */}
         <AlgorithmEducationalCard algorithm={algorithm} />
       </div>
