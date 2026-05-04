@@ -126,7 +126,7 @@
     "bellman": "Bellman",
     "bellmanFord": "Bellman-Ford",
     "welshPowell": "Welsh-Powell",
-    "euler": "Eulerian Paths / Circuits",
+    "chain": " Paths / Chains",
     "learn": "Learn : ",
     "video": "Video",
     "howItWorks": "How it works?",
