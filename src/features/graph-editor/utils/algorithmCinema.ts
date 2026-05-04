@@ -287,7 +287,17 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
     return steps
   }
 
-  // ── Union-Find with path compression + union by rank ─────────────────────
+  // ── Avertissement si le graphe est orienté ────────────────────────────────
+  if (graph.directed) {
+    steps.push({
+      narration: "Note : Kruskal est conçu pour les graphes non orientés. Les directions seront ignorées et seule l'arête la plus légère entre deux nœuds sera conservée.",
+      visited: [],
+      frontier: [],
+      treeEdges: [],
+    })
+  }
+
+  // ── Union-Find logic ──────────────────────────────────────────────────────
   const parent = new Map<NodeId, NodeId>()
   const rank   = new Map<NodeId, number>()
   for (const node of graph.nodes) {
@@ -297,7 +307,7 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
 
   function find(x: NodeId): NodeId {
     if (parent.get(x) !== x) {
-      parent.set(x, find(parent.get(x)!)) // path compression
+      parent.set(x, find(parent.get(x)!))
     }
     return parent.get(x)!
   }
@@ -305,8 +315,7 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
   function union(a: NodeId, b: NodeId): boolean {
     const ra = find(a)
     const rb = find(b)
-    if (ra === rb) return false          // same component → cycle
-    // union by rank
+    if (ra === rb) return false
     if ((rank.get(ra) ?? 0) < (rank.get(rb) ?? 0)) {
       parent.set(ra, rb)
     } else if ((rank.get(ra) ?? 0) > (rank.get(rb) ?? 0)) {
@@ -318,29 +327,29 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
     return true
   }
 
-  // ── Deduplicate undirected edge pairs, then sort by weight ───────────────
-  const seen = new Set<string>()
-  const candidates = graph.edges
-    .filter(e => {
-      const key = e.from < e.to ? `${e.from}-${e.to}` : `${e.to}-${e.from}`
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-    .map(e => ({ ...e, w: graph.weighted ? e.weight : 1 }))
-    .sort((a, b) => a.w - b.w)
+  // ── Dédoublonnage et tri des arêtes ───────────────────────────────────────
+  const edgesMap = new Map<string, GraphEdge & { w: number }>()
+  for (const e of graph.edges) {
+    const key = e.from < e.to ? `${e.from}-${e.to}` : `${e.to}-${e.from}`
+    const w = graph.weighted ? e.weight : 1
+    const existing = edgesMap.get(key)
+    if (!existing || w < existing.w) {
+      edgesMap.set(key, { ...e, w })
+    }
+  }
+  const candidates = Array.from(edgesMap.values()).sort((a, b) => a.w - b.w)
 
   const N = graph.nodes.length
   const mstEdges: string[] = []
   let totalWeight = 0
   const inMst = new Set<NodeId>()
 
-  // ── Step 0 — show the sorted candidate list ───────────────────────────────
   const sortedSummary = candidates
-    .map(e => `(${e.from}↔${e.to}, p=${e.w})`)
+    .map(e => `(${e.from}-${e.to}, p=${e.w})`)
     .join(', ')
+  
   steps.push({
-    narration: `Kruskal — initialisation. ${candidates.length} arête(s) triée(s) par poids croissant : ${sortedSummary}.`,
+    narration: `Initialisation de Kruskal. ${candidates.length} arête(s) candidate(s) triée(s) par poids : ${sortedSummary}.`,
     visited: [],
     frontier: [],
     treeEdges: [],
@@ -348,18 +357,18 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
     mstWeight: 0,
   })
 
-  // ── Main loop ─────────────────────────────────────────────────────────────
+  // ── Boucle principale ─────────────────────────────────────────────────────
   for (const edge of candidates) {
-    if (mstEdges.length === N - 1) break  // MST complete
+    if (mstEdges.length === N - 1) break
 
-    const cycleWouldForm = find(edge.from) === find(edge.to)
+    const rootA = find(edge.from)
+    const rootB = find(edge.to)
+    const cycleWouldForm = rootA === rootB
 
     if (cycleWouldForm) {
-      // ── Find the path in the current MST that forms the cycle ──────────────
-      const cycleEdges: string[] = []
+      // Rechercher le chemin dans le MST actuel pour surligner le cycle
       const adj = new Map<NodeId, Array<{ to: NodeId; edgeId: string }>>()
       const mstEdgeSet = new Set(mstEdges)
-      
       for (const e of graph.edges) {
         if (mstEdgeSet.has(e.id)) {
           if (!adj.has(e.from)) adj.set(e.from, [])
@@ -372,7 +381,6 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
       const queue: Array<{ node: NodeId; path: string[] }> = [{ node: edge.from, path: [] }]
       const visited = new Set<NodeId>([edge.from])
       let foundPath: string[] = []
-
       while (queue.length > 0) {
         const { node, path } = queue.shift()!
         if (node === edge.to) {
@@ -388,28 +396,21 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
       }
 
       const edgeColors: Record<string, string> = {}
-      foundPath.forEach(id => { edgeColors[id] = '#ef4444' }) // Red highlight for cycle
-      edgeColors[edge.id] = '#ef4444' // The rejected edge itself
+      foundPath.forEach(id => { edgeColors[id] = '#ef4444' })
+      edgeColors[edge.id] = '#ef4444'
 
-      const nodeColors: Record<number, string> = {}
-      // Optional: highlight nodes in the cycle too
-      const cycleNodes = new Set<NodeId>([edge.from, edge.to])
-      // we could trace nodes from foundPath if needed
-
-      // Rejected — would create a cycle
       steps.push({
-        narration: `❌ Arête ${edge.from}↔${edge.to} (p=${edge.w}) rejetée — formerait un cycle dans le MST.`,
+        narration: `❌ L'arête ${edge.from}↔${edge.to} (p=${edge.w}) est rejetée car elle formerait un cycle (en rouge).`,
         visited: [...inMst],
         frontier: [],
-        treeEdges: [],
+        treeEdges: [...foundPath, edge.id], // Utilisation de treeEdges pour le cycle rouge
+        edgeColors,
         currentEdgeId: edge.id,
         rejectedEdgeId: edge.id,
         mstEdges: [...mstEdges],
         mstWeight: totalWeight,
-        edgeColors,
       })
     } else {
-      // Accepted — merge components
       union(edge.from, edge.to)
       mstEdges.push(edge.id)
       inMst.add(edge.from)
@@ -417,8 +418,7 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
       totalWeight += edge.w
 
       steps.push({
-        narration: `✅ Arête ${edge.from}↔${edge.to} (p=${edge.w}) ajoutée au MST. `
-          + `MST = {${mstEdges.length} arête(s)} | Poids total = ${totalWeight}.`,
+        narration: `✅ L'arête ${edge.from}↔${edge.to} (p=${edge.w}) est acceptée. Poids total MST = ${totalWeight}.`,
         visited: [...inMst],
         frontier: [],
         treeEdges: [],
@@ -430,12 +430,11 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
     }
   }
 
-  // ── Final step ────────────────────────────────────────────────────────────
   const isComplete = mstEdges.length === N - 1
   steps.push({
     narration: isComplete
-      ? `✅ Kruskal terminé ! MST optimal trouvé — ${mstEdges.length} arête(s), poids total = ${totalWeight}.`
-      : `⚠️ Graphe non connexe. MST partiel : ${mstEdges.length} arête(s), poids = ${totalWeight}.`,
+      ? `✅ Kruskal terminé ! MST optimal trouvé avec ${mstEdges.length} arêtes et un poids total de ${totalWeight}.`
+      : `⚠️ Graphe non connexe. Arbre partiel trouvé avec ${mstEdges.length} arêtes, poids = ${totalWeight}.`,
     visited: [...inMst],
     frontier: [],
     treeEdges: [],

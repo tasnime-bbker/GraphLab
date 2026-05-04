@@ -1249,8 +1249,7 @@ function exportFlowResult() {
       }
       const pairKey = edge.from < edge.to ? `${edge.from}-${edge.to}` : `${edge.to}-${edge.from}`
       const hasReverse = edge.hasArrow && reverseEdgePairs.has(pairKey)
-      const signedOffset =
-        hasReverse && edge.from !== edge.to ? (edge.from < edge.to ? 16 : -16) : 0
+      const signedOffset = hasReverse && edge.from !== edge.to ? 16 : 0
       const geometry = buildEdgeGeometry(from, to, signedOffset, edge.hasArrow, bundleByEdgeId.get(edge.id))
       map.set(edge.id, geometry)
 
