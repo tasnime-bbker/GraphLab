@@ -36,13 +36,15 @@ export interface CinemaStep {
   }>,
   augmentingPathIndex?: number   // numéro du chemin (1er, 2ème, 3ème...)
   bottleneck?: number,
+  augmentingPathColor?: string    // ← couleur du chemin actuel pour le chemin Augmentant MaxFLOW
+  allPathColors?: Record<string, string>  // ← edgeId → couleur du chemin qui l'a utilisé
+  augmentingPathDirections?: (1 | -1)[]  // ← directions du chemin augmentant (1= forward , -1 = backward)
   // valeur du bottleneck de ce chemin
   pathHistory?: Array<{
   index: number
   bottleneck: number
   edgeIds: string[]
   edgeLabels: string[]   //: "1→2", "2→3" etc.
-
 }>
 }
 
@@ -1043,6 +1045,8 @@ function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId):
   // Historique des chemins trouvés
  const pathHistory: Array<{ index: number; bottleneck: number; edgeIds: string[]; edgeLabels: string[] }> = []
 
+   // ── Mémoriser quelle couleur a été utilisée sur chaque arête ─────────────
+  const edgePathColor = new Map<string, string>()
 
   // Première étape visuelle : état initial du graphe
   steps.push({
@@ -1056,8 +1060,23 @@ function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId):
     augmentingPathIndex: 0,
     bottleneck: 0,
     pathHistory: [],
+    allPathColors: {},
+
 
   })
+      // ── Palette de couleurs pour les chemins augmentants
+    const PATH_COLORS = [
+  '#a3e635', // vert lime      — très distinct
+  '#f97316', // orange brûlé   — très distinct
+  '#818cf8', // indigo clair   — très distinct
+  '#fbbf24', // jaune ambre    — très distinct
+  '#34d399', // vert émeraude  — très distinct
+  '#e879f9', // rose fuchsia   — très distinct
+  '#38bdf8', // bleu ciel      — très distinct
+  '#fb7185', // saumon         — très distinct
+  '#4ade80', // vert clair     — très distinct
+  '#c084fc', // violet clair   — très distinct
+]
 
   // ── Boucle principale Ford-Fulkerson ──────────────────────────────────────
   // On cherche des chemins augmentants jusqu'à ce qu'il n'en existe plus
@@ -1069,6 +1088,7 @@ function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId):
     // Plus aucun chemin → le flow maximum est atteint → on sort
     if (augmenting === null) break
     pathIndex++;
+    const currentColor = PATH_COLORS[(pathIndex - 1) % PATH_COLORS.length] 
     pathHistory.push({
        index: pathIndex,
        bottleneck: augmenting.bottleneck,
@@ -1094,11 +1114,14 @@ function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId):
       treeEdges: [],
       augmentingEdgeIds: augmenting.edgeIds,
       augmentingPathIndex: pathIndex,
+      augmentingPathColor: currentColor,
       bottleneck: augmenting.bottleneck,
       pathHistory: [...pathHistory],
       flowByEdge: Object.fromEntries(flowByEdge.entries()),
       residualEdges: buildResidualEdges(graph, flowByEdge), //
-
+      allPathColors: Object.fromEntries(edgePathColor.entries()),
+      augmentingPathDirections: augmenting.directions,  // ← AJOUTER
+     
     })
 
     // ── Application du flow sur chaque arête du chemin ────────────────────
@@ -1126,6 +1149,7 @@ function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId):
 
       // On met à jour le flow de cette arête
       flowByEdge.set(edge.id, next)
+      edgePathColor.set(edgeId, currentColor) 
     }
 
     // On identifie les arêtes saturées (flow = capacité max)
@@ -1136,17 +1160,20 @@ function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId):
 
     // On enregistre l'état après application du flow
     steps.push({
-      narration:  `Flow appliqué. +${augmenting.bottleneck} unités sur le chemin n°${pathIndex}.`,
+      narration:  `Flow appliqué. +${augmenting.bottleneck} unités sur le chemin n°${pathIndex}.`
+      + `\n Les arêtes saturées passent en rouge.`,
       visited: [],
       frontier: [],
       treeEdges: [],
       augmentingEdgeIds: augmenting.edgeIds,
       saturatedEdgeIds,
       augmentingPathIndex: pathIndex,
+      augmentingPathColor: currentColor,
       bottleneck: augmenting.bottleneck,
       pathHistory: [...pathHistory],
       flowByEdge: Object.fromEntries(flowByEdge.entries()),
       residualEdges: buildResidualEdges(graph, flowByEdge), // ← AJOUTER partout
+      allPathColors: Object.fromEntries(edgePathColor.entries()),
 
     })
 
@@ -1174,7 +1201,7 @@ function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId):
     pathHistory: [...pathHistory],
     flowByEdge: Object.fromEntries(flowByEdge.entries()),
     residualEdges: buildResidualEdges(graph, flowByEdge),
-
+    allPathColors: Object.fromEntries(edgePathColor.entries()),
   })
 
   return steps
