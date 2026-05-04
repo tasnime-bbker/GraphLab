@@ -1108,6 +1108,20 @@ const COMPONENT_COLORS = [
   '#ec4899', // pink
   '#84cc16', // lime
 ]
+
+/**
+ * Retourne une couleur pour une composante/arbre.
+ * Si l'index dépasse la liste prédéfinie, génère une couleur HSL unique.
+ */
+function getDynamicComponentColor(index: number): string {
+  if (index < COMPONENT_COLORS.length) {
+    return COMPONENT_COLORS[index]
+  }
+  // Utilisation du nombre d'or pour distribuer les teintes de manière équilibrée
+  const goldenRatioConjugate = 0.618033988749895
+  const hue = ((index * goldenRatioConjugate) % 1) * 360
+  return `hsl(${hue}, 70%, 50%)`
+}
  
 function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
   const steps: CinemaStep[] = []
@@ -1153,7 +1167,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
     return componentMembers.map((members, idx) => ({
       type: 'convex_hull' as const,
       nodes: [...members],
-      color: COMPONENT_COLORS[idx % COMPONENT_COLORS.length],
+      color: getDynamicComponentColor(idx),
     }))
   }
  
@@ -1163,7 +1177,7 @@ function buildConnectedComponentsProgram(graph: GraphState): CinemaStep[] {
  
     const members: NodeId[] = []
     componentMembers.push(members)
-    const color = COMPONENT_COLORS[componentIndex % COMPONENT_COLORS.length]
+    const color = getDynamicComponentColor(componentIndex)
  
     const queue: NodeId[] = [startNode]
     visited.add(startNode)
@@ -1293,7 +1307,7 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
     return componentMembers.map((members, idx) => ({
       type: 'convex_hull' as const,
       nodes: [...members],
-      color: COMPONENT_COLORS[idx % COMPONENT_COLORS.length],
+      color: getDynamicComponentColor(idx),
     }))
   }
  
@@ -1315,8 +1329,10 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
     componentMembers.push(members)
  
     const stack: NodeId[] = [startNode]
+    const currentColor = getDynamicComponentColor(componentIndex)
     visited.add(startNode)
     componentOf[startNode] = componentIndex
+    nodeColors[startNode] = currentColor
     members.push(startNode)
  
     steps.push({
@@ -1345,7 +1361,7 @@ function buildSpanningForestProgram(graph: GraphState): CinemaStep[] {
         members.push(neighbor)
         forestEdgeIds.push(edgeId)
         
-        const currentColor = COMPONENT_COLORS[componentIndex % COMPONENT_COLORS.length]
+        const currentColor = getDynamicComponentColor(componentIndex)
         nodeColors[neighbor] = currentColor
         edgeColors[edgeId] = currentColor
         nodeColors[startNode] = currentColor // Ensure start node is colored
@@ -1447,7 +1463,7 @@ function buildStronglyConnectedComponentsProgram(graph: GraphState): CinemaStep[
 
   function buildColorGroups(): Array<{ color: string; nodeIds: NodeId[] }> {
     return componentMembers.map((members, idx) => ({
-      color: COMPONENT_COLORS[idx % COMPONENT_COLORS.length],
+      color: getDynamicComponentColor(idx),
       nodeIds: [...members],
     }))
   }
@@ -1484,7 +1500,7 @@ function buildStronglyConnectedComponentsProgram(graph: GraphState): CinemaStep[
     if (visited2.has(node)) continue
 
     const comp: NodeId[] = []
-    const color = COMPONENT_COLORS[componentIndex % COMPONENT_COLORS.length]
+    const color = getDynamicComponentColor(componentIndex)
     componentMembers.push(comp)
 
     // Étape : début de la nouvelle SCC
