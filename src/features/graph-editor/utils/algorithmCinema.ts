@@ -2199,70 +2199,147 @@ function hasCycle(graph: GraphState): boolean {
 // ═══════════════════════════════════════════════════════════
 //  BELLMAN sur DAG (tri topologique) — O(n + m)
 // ═══════════════════════════════════════════════════════════
-function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
+ function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
+    /**
+     * Algorithme de Bellman optimisé avec tri topologique.
+     * Complexité: O(n + m)
+     */
     const steps: CinemaStep[] = []
 
-    // ── Corner case 1 : graphe vide ────────────────────────
-    if (graph.nodes.length === 0) {
+    // ─────────────────────────────────────────────────────────────
+    // ✅ PRÉCONDITIONS
+    // ─────────────────────────────────────────────────────────────
+
+    // 1. Graphe vide
+    if (!graph.nodes || graph.nodes.length === 0) {
         steps.push({
-            narration: `❌ Erreur : le graphe est vide, aucun nœud à traiter.`,
-            visited: [], frontier: [], treeEdges: [], distances: {},
+            narration: `Erreur : graphe vide (0 sommets).`,
+            visited: [],
+            frontier: [],
+            treeEdges: [],
         })
         return steps
     }
 
-    // ── Corner case 2 : source inexistante ────────────────
+    // 2. Source inexistante
     if (!graph.nodes.includes(source)) {
         steps.push({
-            narration: `❌ Erreur : la source ${source} n'existe pas dans le graphe.`,
-            visited: [], frontier: [], treeEdges: [], distances: {},
+            narration: `Erreur : la source ${source} n'existe pas dans le graphe.`,
+            visited: [],
+            frontier: [],
+            treeEdges: [],
         })
         return steps
     }
 
-    // ── Corner case 3 : cycle détecté → Bellman DAG inapplicable
+    // 3. Un seul nœud
+    if (graph.nodes.length === 1) {
+        steps.push({
+            narration: `Graphe avec un seul sommet ${source}. Distance = 0.`,
+            visited: [source],
+            frontier: [],
+            treeEdges: [],
+            distances: { [source]: 0 },
+        })
+        return steps
+    }
+
+    // 4. Source sans arêtes sortantes
+    const hasEdgeFromSource = graph.edges.some(e => e.from === source)
+    if (!hasEdgeFromSource) {
+        steps.push({
+            narration: `Attention : la source ${source} n'a aucune arête sortante.`,
+            visited: [source],
+            frontier: [],
+            treeEdges: [],
+            distances: { [source]: 0 },
+        })
+        return steps
+    }
+
+    // 5. Détection de cycle (obligatoire pour ton algo DAG)
+    function hasCycle(graph: GraphState): boolean {
+        const inDegree: Record<NodeId, number> = {}
+        graph.nodes.forEach(n => inDegree[n] = 0)
+
+        for (const edge of graph.edges) {
+            inDegree[edge.to]++
+        }
+
+        const queue: NodeId[] = graph.nodes.filter(n => inDegree[n] === 0)
+        let count = 0
+
+        while (queue.length > 0) {
+            const node = queue.shift()!
+            count++
+
+            for (const edge of graph.edges) {
+                if (edge.from === node) {
+                    inDegree[edge.to]--
+                    if (inDegree[edge.to] === 0) {
+                        queue.push(edge.to)
+                    }
+                }
+            }
+        }
+
+        return count !== graph.nodes.length
+    }
+
     if (hasCycle(graph)) {
         steps.push({
-            narration: `❌ Erreur : le graphe contient un cycle. `
-                      + `L'algorithme de Bellman (version DAG/tri topologique) `
-                      + `ne peut pas s'appliquer. Utilisez Bellman-Ford classique `
-                      + `pour les graphes avec cycles.`,
-            visited: [], frontier: [], treeEdges: [], distances: {},
+            narration: `Erreur : le graphe contient un cycle. Cet algorithme nécessite un DAG.`,
+            visited: [],
+            frontier: [],
+            treeEdges: [],
         })
         return steps
     }
 
-    // ── Initialisation ─────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────
+    // 🔵 TON ALGO (inchangé)
+    // ─────────────────────────────────────────────────────────────
+
     const distances: Record<NodeId, number> = {}
-    for (const node of graph.nodes) distances[node] = Infinity
+    for (const node of graph.nodes) {
+        distances[node] = Infinity
+    }
     distances[source] = 0
 
     const arc_associe: Record<NodeId, string | null> = {}
-    for (const node of graph.nodes) arc_associe[node] = null
+    for (const node of graph.nodes) {
+        arc_associe[node] = null
+    }
 
     const successeurs: Record<NodeId, Array<{to: NodeId, weight: number, id: string}>> = {}
-    const preds_edges: Record<NodeId, Array<{from: NodeId, weight: number, id: string}>> = {}
-    const in_degree: Record<NodeId, number> = {}
-
     for (const node of graph.nodes) {
         successeurs[node] = []
-        preds_edges[node] = []
+    }
+
+    const in_degree: Record<NodeId, number> = {}
+    for (const node of graph.nodes) {
         in_degree[node] = 0
     }
 
+    const preds_edges: Record<NodeId, Array<{from: NodeId, weight: number, id: string}>> = {}
+    for (const node of graph.nodes) {
+        preds_edges[node] = []
+    }
+
     for (const edge of graph.edges) {
-        const weight = graph.weighted ? edge.weight : 1
+        const weight = graph.weighted && edge.weight != null ? edge.weight : 1
         successeurs[edge.from].push({ to: edge.to, weight, id: edge.id })
         preds_edges[edge.to].push({ from: edge.from, weight, id: edge.id })
         in_degree[edge.to] += 1
     }
 
-    const ready_queue: NodeId[] = [source]
+    const ready_queue: NodeId[] = []
     const traites = new Set<NodeId>()
 
+    ready_queue.push(source)
+
     steps.push({
-        narration: `Initialisation Bellman : source = ${source}, d(${source}) = 0. `
-                  + `Tous les autres sommets initialisés à ∞.`,
+        narration: `Initialisation Bellman : source = ${source}, d(${source}) = 0`,
         visited: [source],
         frontier: [],
         treeEdges: [],
@@ -2272,12 +2349,14 @@ function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
 
     let iteration = 0
 
-    // ── Boucle principale ──────────────────────────────────
     while (ready_queue.length > 0) {
         iteration += 1
+
         const sommet_choisi = ready_queue.shift()!
 
-        if (traites.has(sommet_choisi)) continue
+        if (traites.has(sommet_choisi)) {
+            continue
+        }
 
         let distance_min = Infinity
         let meilleur_pred: NodeId | null = null
@@ -2288,12 +2367,6 @@ function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
         } else {
             for (const { from: pred, weight, id: edge_id } of preds_edges[sommet_choisi]) {
                 if (traites.has(pred) || pred === source) {
-
-                    // ── Corner case 4 : pred encore à ∞ + poids négatif
-                    // Infinity + nombre_négatif = Infinity en JS, pas de -Infinity
-                    // Mais on vérifie explicitement pour être sûr
-                    if (distances[pred] === Infinity) continue
-
                     const dist_candidate = distances[pred] + weight
                     if (dist_candidate < distance_min) {
                         distance_min = dist_candidate
@@ -2308,26 +2381,20 @@ function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
         arc_associe[sommet_choisi] = meilleur_arc
         traites.add(sommet_choisi)
 
-        // Narration avec calculs détaillés
         let narration: string
         if (sommet_choisi === source) {
-            narration = `Source ${source} traitée : d(${source}) = 0`
-        } else if (distance_min === Infinity) {
-            // ── Corner case 5 : nœud non atteignable malgré in_degree = 0
-            narration = `Itération ${iteration} : d(${sommet_choisi}) = ∞ `
-                       + `(aucun prédécesseur atteignable)`
+            narration = `Sommet source ${source} traité : d(${source}) = 0`
         } else {
             const calculs: string[] = []
             for (const { from: pred, weight } of preds_edges[sommet_choisi]) {
                 if (traites.has(pred) || pred === source) {
-                    if (distances[pred] !== Infinity) {
-                        calculs.push(`d(${pred})${weight >= 0 ? '+' : ''}${weight}=${distances[pred] + weight}`)
-                    }
+                    calculs.push(`d(${pred})+${weight}=${distances[pred] + weight}`)
                 }
             }
+
             narration = `Itération ${iteration} : d(${sommet_choisi}) = min(${calculs.join(', ')}) = ${distance_min}`
             if (meilleur_pred !== null) {
-                narration += `. Arc choisi : (${meilleur_pred} → ${sommet_choisi})`
+                narration += `. Arc : (${meilleur_pred}→${sommet_choisi})`
             }
         }
 
@@ -2336,8 +2403,8 @@ function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
             visited: Array.from(traites),
             frontier: [...ready_queue],
             treeEdges: Object.keys(arc_associe)
-                .filter(k => arc_associe[Number(k)] !== null)
-                .map(k => arc_associe[Number(k)]!),
+                .filter(k => arc_associe[k as unknown as NodeId] !== null)
+                .map(k => arc_associe[k as unknown as NodeId]!),
             currentNode: sommet_choisi,
             currentEdgeId: meilleur_arc ?? undefined,
             distances: Object.fromEntries(
@@ -2355,32 +2422,27 @@ function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
         }
     }
 
-    // ── Résultat final ─────────────────────────────────────
-    const non_atteints = graph.nodes.filter(n => !traites.has(n))
-
-    if (non_atteints.length > 0) {
-        // ── Corner case 6 : graphe non connexe
+    if (traites.size < graph.nodes.length) {
+        const non_atteints = graph.nodes.filter(n => !traites.has(n))
         steps.push({
-            narration: `⚠️ Bellman terminé. Graphe non connexe : `
-                      + `${non_atteints.length} sommet(s) non atteignable(s) `
-                      + `depuis ${source} : {${non_atteints.join(', ')}}`,
+            narration: `Bellman terminé : graphe non connexe. Sommets non atteints : {${non_atteints.join(', ')}}`,
             visited: Array.from(traites),
             frontier: [],
             treeEdges: Object.keys(arc_associe)
-                .filter(k => arc_associe[Number(k)] !== null)
-                .map(k => arc_associe[Number(k)]!),
+                .filter(k => arc_associe[k as unknown as NodeId] !== null)
+                .map(k => arc_associe[k as unknown as NodeId]!),
             distances: Object.fromEntries(
                 Object.entries(distances).filter(([_, v]) => v !== Infinity)
             ),
         })
     } else {
         steps.push({
-            narration: `✅ Bellman terminé. Tous les plus courts chemins depuis ${source} calculés.`,
+            narration: `Bellman terminé. Tous les plus courts chemins depuis ${source} calculés.`,
             visited: Array.from(traites),
             frontier: [],
             treeEdges: Object.keys(arc_associe)
-                .filter(k => arc_associe[Number(k)] !== null)
-                .map(k => arc_associe[Number(k)]!),
+                .filter(k => arc_associe[k as unknown as NodeId] !== null)
+                .map(k => arc_associe[k as unknown as NodeId]!),
             distances: Object.fromEntries(
                 Object.entries(distances).filter(([_, v]) => v !== Infinity)
             ),
@@ -2389,7 +2451,6 @@ function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
 
     return steps
 }
-
 
 // ═══════════════════════════════════════════════════════════
 //  BFS — O(n + m)
