@@ -252,62 +252,67 @@ function EdgeItem({
   setFlowDraft,
   commitFlow,
   setEditingFlowEdgeId,
-  currentFlowValue
+  currentFlowValue,
+  render = 'all' // 'all' | 'line' | 'label'
 
 }: any) {
   const pathRef = useRef<SVGPathElement>(null)
 
   return (
     <g className={`transition-opacity duration-500 ${isGhosted ? 'opacity-[0.08]' : 'hover:opacity-80'}`}>
-      <path
-        d={geometry.path}
-        stroke="transparent"
-        strokeWidth={15}
-        fill="none"
-        className="cursor-pointer"
-        onClick={(event) => {
-          event.stopPropagation()
-          dispatch({ type: 'SET_SELECTED_EDGE', payload: { edgeId: edge.id } })
-        }}
-        onDoubleClick={(event) => {
-          event.stopPropagation()
-          dispatch({ type: 'DELETE_EDGE', payload: { edgeId: edge.id } })
-        }}
-      />
-      <path
-        ref={pathRef}
-        d={geometry.path}
-        className={`edge-path pointer-events-none transition-all duration-300 ${isSelected ? 'selected-glow' : ''}`}
-        stroke={isSelected ? '#38bdf8' : 'rgba(14, 165, 233, 0.4)'}
-        strokeWidth={isSelected ? 3.5 : 2}
-        fill="none"
-        strokeLinecap="round"
-        markerEnd={directed ? (isSelected ? 'url(#arrow-selected)' : 'url(#arrow)') : undefined}
-      />
+      {render !== 'label' && (
+        <>
+          <path
+            d={geometry.path}
+            stroke="transparent"
+            strokeWidth={15}
+            fill="none"
+            className="cursor-pointer"
+            onClick={(event) => {
+              event.stopPropagation()
+              dispatch({ type: 'SET_SELECTED_EDGE', payload: { edgeId: edge.id } })
+            }}
+            onDoubleClick={(event) => {
+              event.stopPropagation()
+              dispatch({ type: 'DELETE_EDGE', payload: { edgeId: edge.id } })
+            }}
+          />
+          <path
+            ref={pathRef}
+            d={geometry.path}
+            className={`edge-path pointer-events-none transition-all duration-300 ${isSelected ? 'selected-glow' : ''}`}
+            stroke={isSelected ? '#38bdf8' : 'rgba(14, 165, 233, 0.4)'}
+            strokeWidth={isSelected ? 3.5 : 2}
+            fill="none"
+            strokeLinecap="round"
+            markerEnd={directed ? (isSelected ? 'url(#arrow-selected)' : 'url(#arrow)') : undefined}
+          />
 
-      <EdgeFlowParticles
-        pathRef={pathRef}
-        speed={directed ? 1.2 : 0.8}
-        isActive={true}
-        color={colorScheme === 'dark' ? '#00d4ff' : '#0e7490'}
-      />
-      {!directed && (
-        <EdgeFlowParticles
-          pathRef={pathRef}
-          speed={0.8}
-          isActive={true}
-          reverse={true}
-          color={colorScheme === 'dark' ? '#00d4ff' : '#0e7490'}
-        />
+          <EdgeFlowParticles
+            pathRef={pathRef}
+            speed={directed ? 1.2 : 0.8}
+            isActive={true}
+            color={colorScheme === 'dark' ? '#00d4ff' : '#0e7490'}
+          />
+          {!directed && (
+            <EdgeFlowParticles
+              pathRef={pathRef}
+              speed={0.8}
+              isActive={true}
+              reverse={true}
+              color={colorScheme === 'dark' ? '#00d4ff' : '#0e7490'}
+            />
+          )}
+          <EdgePulse
+            d={geometry.path}
+            color={isSelected
+              ? (colorScheme === 'dark' ? '#38bdf8' : '#0369a1')
+              : (colorScheme === 'dark' ? '#0ea5e9' : '#0284c7')}
+          />
+        </>
       )}
-      <EdgePulse
-        d={geometry.path}
-        color={isSelected
-          ? (colorScheme === 'dark' ? '#38bdf8' : '#0369a1')
-          : (colorScheme === 'dark' ? '#0ea5e9' : '#0284c7')}
-      />
 
-      {weighted && (
+      {render !== 'line' && weighted && (
         <g className="cursor-pointer" onClick={(event) => {
           event.stopPropagation()
           startWeightEdit(edge.id, edge.weight)
@@ -373,7 +378,7 @@ function EdgeItem({
         </g>
       )}
           {/* ← AJOUTER ICI, juste avant le </g> final */}
-      {weighted && isMaxFlow && (
+      {render !== 'line' && weighted && isMaxFlow && (
         <g className="cursor-pointer" onClick={(event) => {
           event.stopPropagation()
           startFlowEdit(edge.id, edge.flow ?? 0)
@@ -1762,6 +1767,7 @@ function exportFlowResult() {
                       ? (currentCinemaStep.flowByEdge[edge.id] ?? edge.flow ?? 0)
                       : (edge.flow ?? 0)
                   }
+                  render="line"
 
                 />
               )
@@ -1896,7 +1902,7 @@ function exportFlowResult() {
                   key={`cinema-mst-edge-${edgeId}-${cinemaStepIndex}`}
                   d={geometry.path}
                   fill="none"
-                  stroke="#38bdf8"
+                  stroke="#22c55e"
                   strokeWidth={5}
                   strokeLinecap="round"
                   className={isNew ? 'mst-grow' : undefined}
@@ -2301,6 +2307,63 @@ function exportFlowResult() {
                     {nodeId}
                   </text>
                 </g>
+              )
+            })}
+
+            {/* ── Labels des arêtes rendus APRES les nœuds pour le Z-INDEX ──────────────── */}
+            {visualEdges.map((edge) => {
+              const geometry = edgeGeometryById.get(edge.id)
+              if (!geometry) {
+                return null
+              }
+
+              const isSelected = interaction.selectedEdgeId === edge.id || (edge.symmetryKey !== undefined && graph.edges.find(e => e.id === interaction.selectedEdgeId)?.symmetryKey === edge.symmetryKey)
+
+              let isGhosted = false
+              if (showOriginalContext && currentCinemaStep) {
+                const activeEdges = new Set([
+                  ...(currentCinemaStep.treeEdges || []),
+                  ...(currentCinemaStep.pathEdges || []),
+                  ...(currentCinemaStep.mstEdges || []),
+                  currentCinemaStep.currentEdgeId
+                ])
+                if (!activeEdges.has(edge.id) && !activeEdges.has(edge.symmetryKey)) {
+                  isGhosted = true
+                }
+              }
+
+              return (
+                <EdgeItem
+                  key={`label-${edge.id}`}
+                  edge={edge}
+                  geometry={geometry}
+                  isSelected={isSelected}
+                  directed={edge.hasArrow}
+                  weighted={graph.weighted}
+                  editingEdgeId={editingEdgeId}
+                  weightDraft={weightDraft}
+                  startWeightEdit={startWeightEdit}
+                  setWeightDraft={setWeightDraft}
+                  setWeightError={setWeightError}
+                  commitWeight={commitWeight}
+                  setEditingEdgeId={setEditingEdgeId}
+                  dispatch={dispatch}
+                  colorScheme={colorScheme}
+                  isGhosted={isGhosted}
+                  isMaxFlow={cinemaAlgorithm === 'MaxFlow'}
+                  setEditingFlowEdgeId={setEditingFlowEdgeId}
+                  editingFlowEdgeId={editingFlowEdgeId}   
+                  flowDraft={flowDraft}                   
+                  startFlowEdit={startFlowEdit}           
+                  setFlowDraft={setFlowDraft}             
+                  commitFlow={commitFlow}                 
+                  currentFlowValue={
+                    cinemaAlgorithm === 'MaxFlow' && currentCinemaStep?.flowByEdge
+                      ? (currentCinemaStep.flowByEdge[edge.id] ?? edge.flow ?? 0)
+                      : (edge.flow ?? 0)
+                  }
+                  render="label"
+                />
               )
             })}
 
