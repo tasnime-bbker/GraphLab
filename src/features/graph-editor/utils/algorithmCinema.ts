@@ -2129,11 +2129,51 @@ export function speedToInterval(speed: number): number {
 function buildBellmanFordProgram(graph: GraphState, source: NodeId): CinemaStep[] {
   const steps: CinemaStep[] = []
 
+  // ── Cas particulier 1 : graphe vide ──────────────────────────────────────
+  if (graph.nodes.length === 0) {
+    steps.push({
+      narration: `❌ The graph has no nodes.`,
+      visited: [],
+      frontier: [],
+      treeEdges: [],
+    })
+    return steps
+  }
+
+  // ── Cas particulier 2 : source inexistante ────────────────────────────────
+  if (!graph.nodes.includes(source)) {
+    steps.push({
+      narration: `❌ Source node ${source} does not exist in the graph.`,
+      visited: [],
+      frontier: [],
+      treeEdges: [],
+    })
+    return steps
+  }
+
+  // ── Cas particulier 3 : graphe non orienté avec poids négatifs ───────────
+  if (!graph.directed) {
+    const negEdge = graph.edges.find(e => e.weight < 0)
+    if (negEdge) {
+      steps.push({
+        narration: `❌ Bellman-Ford cannot be applied on an undirected graph with negative weights: edge (${negEdge.from} ↔ ${negEdge.to}) with weight ${negEdge.weight} creates an absorbing cycle. Use a directed graph.`,
+        visited: [],
+        frontier: [],
+        treeEdges: [],
+        currentEdgeId: negEdge.id,
+      })
+      return steps
+    }
+  }
+
   const distances = new Map<NodeId, number>()
   const parent = new Map<NodeId, string>()
+  const processCount = new Map<NodeId, number>()
+  const N = graph.nodes.length
 
   for (const node of graph.nodes) {
     distances.set(node, Number.POSITIVE_INFINITY)
+    processCount.set(node, 0)
   }
   distances.set(source, 0)
 
@@ -2160,10 +2200,26 @@ function buildBellmanFordProgram(graph: GraphState, source: NodeId): CinemaStep[
   })
 
   let iterCount = 2
+  let absorbingCycleDetected = false
 
   while (V.size > 0) {
     const i = V.values().next().value as NodeId
     V.delete(i)
+
+    // ── Cas particulier 4 : circuit absorbant ─────────────────────────────
+    processCount.set(i, (processCount.get(i) ?? 0) + 1)
+    if ((processCount.get(i) ?? 0) > N - 1) {
+      steps.push({
+        narration: `❌ Negative cycle detected: node ${i} has been processed more than ${N - 1} times. The graph contains an absorbing circuit — shortest paths are not defined.`,
+        visited: [],
+        frontier: [],
+        treeEdges: rebuildTreeEdges(),
+        currentNode: i,
+        distances: toDistanceRecord(),
+      })
+      absorbingCycleDetected = true
+      break
+    }
 
     steps.push({
       narration: `[Iter ${iterCount}] Select node ${i} from V and remove it. V = {${[...V].join(', ') || '∅'}}`,
@@ -2174,10 +2230,13 @@ function buildBellmanFordProgram(graph: GraphState, source: NodeId): CinemaStep[
       distances: toDistanceRecord(),
     })
 
-    const outEdges = graph.edges.filter(e => e.from === i)
+    // Arcs sortants : orienté → seulement e.from === i, non orienté → les deux sens
+    const outEdges = graph.directed
+      ? graph.edges.filter(e => e.from === i)
+      : graph.edges.filter(e => e.from === i || e.to === i)
 
     for (const edge of outEdges) {
-      const j = edge.to
+      const j = edge.from === i ? edge.to : edge.from
       const lij = graph.weighted ? edge.weight : 1
       const di = distances.get(i)!
       const dj = distances.get(j)!
@@ -2223,13 +2282,15 @@ function buildBellmanFordProgram(graph: GraphState, source: NodeId): CinemaStep[
     iterCount++
   }
 
-  steps.push({
-    narration: `V is empty. Algorithm complete after ${iterCount - 1} iteration(s). Distances: ${graph.nodes.map(n => `d(${n})=${distances.get(n) === Infinity ? '∞' : distances.get(n)}`).join(', ')}`,
-    visited: graph.nodes.filter(n => distances.get(n) !== Infinity),
-    frontier: [],
-    treeEdges: rebuildTreeEdges(),
-    distances: toDistanceRecord(),
-  })
+  if (!absorbingCycleDetected) {
+    steps.push({
+      narration: `V is empty. Algorithm complete after ${iterCount - 1} iteration(s). Distances: ${graph.nodes.map(n => `d(${n})=${distances.get(n) === Infinity ? '∞' : distances.get(n)}`).join(', ')}`,
+      visited: graph.nodes.filter(n => distances.get(n) !== Infinity),
+      frontier: [],
+      treeEdges: rebuildTreeEdges(),
+      distances: toDistanceRecord(),
+    })
+  }
 
   return steps
 }
@@ -2766,6 +2827,42 @@ function buildDfsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
 
 function buildDijkstraProgram(graph: GraphState, source: NodeId): CinemaStep[] {
   const steps: CinemaStep[] = []
+
+  // ── Cas particulier 1 : graphe vide ──────────────────────────────────────
+  if (graph.nodes.length === 0) {
+    steps.push({
+      narration: `❌ The graph has no nodes.`,
+      visited: [],
+      frontier: [],
+      treeEdges: [],
+    })
+    return steps
+  }
+
+  // ── Cas particulier 2 : source inexistante ────────────────────────────────
+  if (!graph.nodes.includes(source)) {
+    steps.push({
+      narration: `❌ Source node ${source} does not exist in the graph.`,
+      visited: [],
+      frontier: [],
+      treeEdges: [],
+    })
+    return steps
+  }
+
+  // ── Cas particulier 3 : poids négatifs ───────────────────────────────────
+  const negativeEdge = graph.edges.find(e => e.weight < 0)
+  if (negativeEdge) {
+    steps.push({
+      narration: `❌ Dijkstra cannot be applied: edge (${negativeEdge.from} → ${negativeEdge.to}) has a negative weight (${negativeEdge.weight}). Dijkstra requires all edge weights to be non-negative. Use another algorithm instead.`,
+      visited: [],
+      frontier: [],
+      treeEdges: [],
+      currentEdgeId: negativeEdge.id,
+    })
+    return steps
+  }
+
   const distances = new Map<NodeId, number>()
   const visited = new Set<NodeId>()
   const treeEdges: string[] = []
@@ -2795,7 +2892,7 @@ function buildDijkstraProgram(graph: GraphState, source: NodeId): CinemaStep[] {
 
   const sSnapshot = (): string => `{${[...visited].join(', ')}}`
 
-  // ── Iter 1 : Initialisation pure ──────────────────────────────────────────
+  // ── Iter 1 : Initialisation pure ─────────────────────────────────────────
   visited.add(source)
 
   steps.push({
@@ -2807,13 +2904,14 @@ function buildDijkstraProgram(graph: GraphState, source: NodeId): CinemaStep[] {
     distances: toDistanceRecord(),
   })
 
-  // ── Itérations 2, 3, ... ──────────────────────────────────────────────────
+  // ── Itérations 2, 3, ... ─────────────────────────────────────────────────
   let iterCount = 2
   let currentNode: NodeId = source
 
   while (true) {
-    // Traitement des arcs sortants du xp courant
-    for (const neighbor of neighborsFor(graph, currentNode)) {
+    // Traitement des arcs/arêtes sortants du xp courant
+    // ignoreDirection=true pour graphes non orientés
+    for (const neighbor of neighborsFor(graph, currentNode, !graph.directed)) {
       if (visited.has(neighbor.nodeId)) continue
 
       const currentDist = distances.get(currentNode) ?? Number.POSITIVE_INFINITY
@@ -2879,7 +2977,6 @@ function buildDijkstraProgram(graph: GraphState, source: NodeId): CinemaStep[] {
       return e ? `(${e.from},${e.to})` : '-'
     })()
 
-    // Step résumé de fin d'itération : distances + xp choisi + S
     steps.push({
       narration: `[Iter ${iterCount}] End: ${distSnapshot()} | xp = ${nextNode}, A(xp) = ${arcLabel}, S = ${sSnapshot()}`,
       visited: [...visited],
@@ -2893,7 +2990,6 @@ function buildDijkstraProgram(graph: GraphState, source: NodeId): CinemaStep[] {
     iterCount++
   }
 
-  // Step final
   steps.push({
     narration: `Dijkstra complete after ${iterCount - 1} iteration(s). ${distSnapshot()} | S = ${sSnapshot()} — STOP`,
     visited: [...visited],
