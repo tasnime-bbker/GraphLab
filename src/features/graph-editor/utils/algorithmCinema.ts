@@ -1,7 +1,7 @@
 import { path } from 'd3'
 import type { GraphEdge, GraphState, NodeId } from '../../graph/model/types'
 import { findEulerianPathOrCircuit, buildEulerianTraceReport } from '../../graph/utils/graphAnalysis'
-
+ 
 export type CinemaAlgorithm = 'BFS' | 'DFS' | 'Dijkstra' | 'Prims' | 'Kruskals' | 'MaxFlow' | 'ConnectedComponents' | 'SpanningForest' | 'StronglyConnectedComponents' | 'Bellman' | 'BellmanFord' | 'WelshPowell' | 'EdgeColoring' | 'EulerienPath' | 'RechercheChaine'
 
 export interface CinemaStep {
@@ -70,7 +70,7 @@ function graphSignature(graph: GraphState): string {
 
 function neighborsFor(graph: GraphState, nodeId: NodeId, ignoreDirection = false): WeightedNeighbor[] {
   const neighbors: WeightedNeighbor[] = []
-  for (const edge of graph.edges) {
+  for (const edge of graph.edges) { //#construction o m 
     if (edge.from === nodeId) {
       neighbors.push({
         nodeId: edge.to,
@@ -106,114 +106,7 @@ function emptyStep(narration: string): CinemaStep {
   }
 }
 
-function buildBfsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
-  const steps: CinemaStep[] = []
-  const visited = new Set<NodeId>()
-  const queue: NodeId[] = [source]
-  const treeEdges: string[] = []
-
-  visited.add(source)
-  steps.push({ ...emptyStep(`Start BFS from node ${source}.`), visited: [source], frontier: [source], currentNode: source })
-
-  while (queue.length > 0) {
-    const current = queue.shift()
-    if (typeof current !== 'number') {
-      continue
-    }
-
-    const neighbors = neighborsFor(graph, current, true)
-    for (const neighbor of neighbors) {
-      steps.push({
-        narration: `Inspect edge ${current}->${neighbor.nodeId}.`,
-        visited: [...visited],
-        frontier: [...queue],
-        treeEdges: [...treeEdges],
-        currentNode: current,
-        currentEdgeId: neighbor.edgeId,
-      })
-
-      if (!visited.has(neighbor.nodeId)) {
-        visited.add(neighbor.nodeId)
-        queue.push(neighbor.nodeId)
-        treeEdges.push(neighbor.edgeId)
-        steps.push({
-          narration: `Visit node ${neighbor.nodeId} and add it to the BFS frontier.`,
-          visited: [...visited],
-          frontier: [...queue],
-          treeEdges: [...treeEdges],
-          currentNode: neighbor.nodeId,
-          currentEdgeId: neighbor.edgeId,
-        })
-      }
-    }
-  }
-
-  steps.push({
-    narration: `BFS complete. Reached ${visited.size} node(s).`,
-    visited: [...visited],
-    frontier: [],
-    treeEdges: [...treeEdges],
-  })
-
-  return steps
-}
-
-function buildDfsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
-  const steps: CinemaStep[] = []
-  const visited = new Set<NodeId>()
-  const treeEdges: string[] = []
-  const activePathEdges: string[] = []
-
-  function dfs(nodeId: NodeId): void {
-    visited.add(nodeId)
-    steps.push({
-      narration: `Enter node ${nodeId}.`,
-      visited: [...visited],
-      frontier: [nodeId],
-      treeEdges: [...treeEdges],
-      currentNode: nodeId,
-      pathEdges: [...activePathEdges],
-    })
-
-    for (const neighbor of neighborsFor(graph, nodeId)) {
-      steps.push({
-        narration: `Probe edge ${nodeId}->${neighbor.nodeId}.`,
-        visited: [...visited],
-        frontier: [nodeId],
-        treeEdges: [...treeEdges],
-        currentNode: nodeId,
-        currentEdgeId: neighbor.edgeId,
-        pathEdges: [...activePathEdges],
-      })
-
-      if (!visited.has(neighbor.nodeId)) {
-        treeEdges.push(neighbor.edgeId)
-        activePathEdges.push(neighbor.edgeId)
-        dfs(neighbor.nodeId)
-        activePathEdges.pop()
-        steps.push({
-          narration: `Backtrack to node ${nodeId}.`,
-          visited: [...visited],
-          frontier: [nodeId],
-          treeEdges: [...treeEdges],
-          currentNode: nodeId,
-          pathEdges: [...activePathEdges],
-        })
-      }
-    }
-  }
-
-  dfs(source)
-  steps.push({
-    narration: `DFS complete. Reached ${visited.size} node(s).`,
-    visited: [...visited],
-    frontier: [],
-    treeEdges: [...treeEdges],
-    pathEdges: [],
-  })
-
-  return steps
-}
+ 
 /*
 function buildDijkstraProgram(graph: GraphState, source: NodeId): CinemaStep[] {
   const steps: CinemaStep[] = []
@@ -2164,107 +2057,8 @@ export function speedToInterval(speed: number): number {
   return Math.max(60, Math.round(900 / Math.max(0.25, speed)))
 }
 
-function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
-  const steps: CinemaStep[] = []
-
-  const distances = new Map<NodeId, number>()
-  const parent = new Map<NodeId, string>() // 🔥 IMPORTANT
-  const treeEdges: string[] = []
-
-  // Initialize
-  for (const node of graph.nodes) {
-    distances.set(node, Number.POSITIVE_INFINITY)
-  }
-  distances.set(source, 0)
-
-  const toDistanceRecord = (): Record<number, number> => {
-    const record: Record<number, number> = {}
-    for (const node of graph.nodes) {
-      const val = distances.get(node)!
-      if (val !== Number.POSITIVE_INFINITY) {
-        record[node] = val
-      }
-    }
-    return record
-  }
-
-  // 🔥 Rebuild treeEdges from parent
-  const rebuildTreeEdges = () => {
-    return Array.from(parent.values())
-  }
-
-  // Initial step
-  steps.push({
-    narration: `Initialize Bellman algorithm from source node ${source}.`,
-    visited: [],
-    frontier: [source],
-    treeEdges: [],
-    currentNode: source,
-    distances: toDistanceRecord(),
-  })
-
-  // Relax edges
-  for (let i = 0; i < graph.nodes.length - 1; i++) {
-
-    steps.push({
-      narration: `Iteration ${i + 1} over all edges.`,
-      visited: [],
-      frontier: [],
-      treeEdges: rebuildTreeEdges(),
-      distances: toDistanceRecord(),
-    })
-
-    for (const edge of graph.edges) {
-      const u = edge.from
-      const v = edge.to
-      const weight = graph.weighted ? edge.weight : 1
-
-      const du = distances.get(u)!
-      const dv = distances.get(v)!
-
-      // Inspect
-      steps.push({
-        narration: `Inspect edge ${u} → ${v} with weight ${weight}.`,
-        visited: [],
-        frontier: [],
-        treeEdges: rebuildTreeEdges(),
-        currentEdgeId: edge.id,
-        currentNode: u,
-        distances: toDistanceRecord(),
-      })
-
-      // Relaxation
-      if (du !== Infinity && du + weight < dv) {
-
-        distances.set(v, du + weight)
-
-        // 🔥 overwrite parent (IMPORTANT)
-        parent.set(v, edge.id)
-
-        steps.push({
-          narration: `Update node ${v}: ${dv === Infinity ? '∞' : dv} → ${du + weight} (better path found).`,
-          visited: [],
-          frontier: [],
-          treeEdges: rebuildTreeEdges(),
-          currentNode: v,
-          currentEdgeId: edge.id,
-          distances: toDistanceRecord(),
-        })
-      }
-    }
-  }
-
-  // Final
-  steps.push({
-    narration: `Bellman complete. Each node keeps only the best incoming edge.`,
-    visited: [],
-    frontier: [],
-    treeEdges: rebuildTreeEdges(),
-    distances: toDistanceRecord(),
-  })
-
-  return steps
-}
+ 
+ 
 function buildBellmanFordProgram(graph: GraphState, source: NodeId): CinemaStep[] {
   const steps: CinemaStep[] = []
 
@@ -2371,6 +2165,536 @@ function buildBellmanFordProgram(graph: GraphState, source: NodeId): CinemaStep[
   })
 
   return steps
+}
+
+
+
+// ═══════════════════════════════════════════════════════════
+//  UTILITAIRE : détection de cycle dans un graphe orienté
+// ═══════════════════════════════════════════════════════════
+function hasCycle(graph: GraphState): boolean {
+    // DFS colorié : blanc=0, gris=1 (en cours), noir=2 (fini)
+    const color: Record<NodeId, number> = {}
+    for (const node of graph.nodes) color[node] = 0
+
+    function dfsColor(u: NodeId): boolean {
+        color[u] = 1 // gris = en cours de visite
+        for (const edge of graph.edges) {
+            if (edge.from !== u) continue
+            const v = edge.to
+            if (color[v] === 1) return true  // back-edge = cycle !
+            if (color[v] === 0 && dfsColor(v)) return true
+        }
+        color[u] = 2 // noir = terminé
+        return false
+    }
+
+    for (const node of graph.nodes) {
+        if (color[node] === 0 && dfsColor(node)) return true
+    }
+    return false
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  BELLMAN sur DAG (tri topologique) — O(n + m)
+// ═══════════════════════════════════════════════════════════
+ function buildBellmanProgram(graph: GraphState, source: NodeId): CinemaStep[] {
+    /**
+     * Algorithme de Bellman optimisé avec tri topologique.
+     * Complexité: O(n + m)
+     */
+    const steps: CinemaStep[] = []
+
+    // ─────────────────────────────────────────────────────────────
+    // ✅ PRÉCONDITIONS
+    // ─────────────────────────────────────────────────────────────
+
+    // 1. Graphe vide
+    if (!graph.nodes || graph.nodes.length === 0) {
+        steps.push({
+            narration: `Erreur : graphe vide (0 sommets).`,
+            visited: [],
+            frontier: [],
+            treeEdges: [],
+        })
+        return steps
+    }
+
+    // 2. Source inexistante
+    if (!graph.nodes.includes(source)) {
+        steps.push({
+            narration: `Erreur : la source ${source} n'existe pas dans le graphe.`,
+            visited: [],
+            frontier: [],
+            treeEdges: [],
+        })
+        return steps
+    }
+
+    // 3. Un seul nœud
+    if (graph.nodes.length === 1) {
+        steps.push({
+            narration: `Graphe avec un seul sommet ${source}. Distance = 0.`,
+            visited: [source],
+            frontier: [],
+            treeEdges: [],
+            distances: { [source]: 0 },
+        })
+        return steps
+    }
+
+    // 4. Source sans arêtes sortantes
+    const hasEdgeFromSource = graph.edges.some(e => e.from === source)
+    if (!hasEdgeFromSource) {
+        steps.push({
+            narration: `Attention : la source ${source} n'a aucune arête sortante.`,
+            visited: [source],
+            frontier: [],
+            treeEdges: [],
+            distances: { [source]: 0 },
+        })
+        return steps
+    }
+
+    // 5. Détection de cycle (obligatoire pour ton algo DAG)
+    function hasCycle(graph: GraphState): boolean {
+        const inDegree: Record<NodeId, number> = {}
+        graph.nodes.forEach(n => inDegree[n] = 0)
+
+        for (const edge of graph.edges) {
+            inDegree[edge.to]++
+        }
+
+        const queue: NodeId[] = graph.nodes.filter(n => inDegree[n] === 0)
+        let count = 0
+
+        while (queue.length > 0) {
+            const node = queue.shift()!
+            count++
+
+            for (const edge of graph.edges) {
+                if (edge.from === node) {
+                    inDegree[edge.to]--
+                    if (inDegree[edge.to] === 0) {
+                        queue.push(edge.to)
+                    }
+                }
+            }
+        }
+
+        return count !== graph.nodes.length
+    }
+
+    if (hasCycle(graph)) {
+        steps.push({
+            narration: `Erreur : le graphe contient un cycle. Cet algorithme nécessite un DAG.`,
+            visited: [],
+            frontier: [],
+            treeEdges: [],
+        })
+        return steps
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 🔵 TON ALGO (inchangé)
+    // ─────────────────────────────────────────────────────────────
+
+    const distances: Record<NodeId, number> = {}
+    for (const node of graph.nodes) {
+        distances[node] = Infinity
+    }
+    distances[source] = 0
+
+    const arc_associe: Record<NodeId, string | null> = {}
+    for (const node of graph.nodes) {
+        arc_associe[node] = null
+    }
+
+    const successeurs: Record<NodeId, Array<{to: NodeId, weight: number, id: string}>> = {}
+    for (const node of graph.nodes) {
+        successeurs[node] = []
+    }
+
+    const in_degree: Record<NodeId, number> = {}
+    for (const node of graph.nodes) {
+        in_degree[node] = 0
+    }
+
+    const preds_edges: Record<NodeId, Array<{from: NodeId, weight: number, id: string}>> = {}
+    for (const node of graph.nodes) {
+        preds_edges[node] = []
+    }
+
+    for (const edge of graph.edges) {
+        const weight = graph.weighted && edge.weight != null ? edge.weight : 1
+        successeurs[edge.from].push({ to: edge.to, weight, id: edge.id })
+        preds_edges[edge.to].push({ from: edge.from, weight, id: edge.id })
+        in_degree[edge.to] += 1
+    }
+
+    const ready_queue: NodeId[] = []
+    const traites = new Set<NodeId>()
+
+    ready_queue.push(source)
+
+    steps.push({
+        narration: `Initialisation Bellman : source = ${source}, d(${source}) = 0`,
+        visited: [source],
+        frontier: [],
+        treeEdges: [],
+        currentNode: source,
+        distances: { [source]: 0 },
+    })
+
+    let iteration = 0
+
+    while (ready_queue.length > 0) {
+        iteration += 1
+
+        const sommet_choisi = ready_queue.shift()!
+
+        if (traites.has(sommet_choisi)) {
+            continue
+        }
+
+        let distance_min = Infinity
+        let meilleur_pred: NodeId | null = null
+        let meilleur_arc: string | null = null
+
+        if (sommet_choisi === source) {
+            distance_min = 0
+        } else {
+            for (const { from: pred, weight, id: edge_id } of preds_edges[sommet_choisi]) {
+                if (traites.has(pred) || pred === source) {
+                    const dist_candidate = distances[pred] + weight
+                    if (dist_candidate < distance_min) {
+                        distance_min = dist_candidate
+                        meilleur_pred = pred
+                        meilleur_arc = edge_id
+                    }
+                }
+            }
+        }
+
+        distances[sommet_choisi] = distance_min
+        arc_associe[sommet_choisi] = meilleur_arc
+        traites.add(sommet_choisi)
+
+        let narration: string
+        if (sommet_choisi === source) {
+            narration = `Sommet source ${source} traité : d(${source}) = 0`
+        } else {
+            const calculs: string[] = []
+            for (const { from: pred, weight } of preds_edges[sommet_choisi]) {
+                if (traites.has(pred) || pred === source) {
+                    calculs.push(`d(${pred})+${weight}=${distances[pred] + weight}`)
+                }
+            }
+
+            narration = `Itération ${iteration} : d(${sommet_choisi}) = min(${calculs.join(', ')}) = ${distance_min}`
+            if (meilleur_pred !== null) {
+                narration += `. Arc : (${meilleur_pred}→${sommet_choisi})`
+            }
+        }
+
+        steps.push({
+            narration,
+            visited: Array.from(traites),
+            frontier: [...ready_queue],
+            treeEdges: Object.keys(arc_associe)
+                .filter(k => arc_associe[k as unknown as NodeId] !== null)
+                .map(k => arc_associe[k as unknown as NodeId]!),
+            currentNode: sommet_choisi,
+            currentEdgeId: meilleur_arc ?? undefined,
+            distances: Object.fromEntries(
+                Object.entries(distances).filter(([_, v]) => v !== Infinity)
+            ),
+        })
+
+        for (const { to: voisin } of successeurs[sommet_choisi]) {
+            if (!traites.has(voisin)) {
+                in_degree[voisin] -= 1
+                if (in_degree[voisin] === 0) {
+                    ready_queue.push(voisin)
+                }
+            }
+        }
+    }
+
+    if (traites.size < graph.nodes.length) {
+        const non_atteints = graph.nodes.filter(n => !traites.has(n))
+        steps.push({
+            narration: `Bellman terminé : graphe non connexe. Sommets non atteints : {${non_atteints.join(', ')}}`,
+            visited: Array.from(traites),
+            frontier: [],
+            treeEdges: Object.keys(arc_associe)
+                .filter(k => arc_associe[k as unknown as NodeId] !== null)
+                .map(k => arc_associe[k as unknown as NodeId]!),
+            distances: Object.fromEntries(
+                Object.entries(distances).filter(([_, v]) => v !== Infinity)
+            ),
+        })
+    } else {
+        steps.push({
+            narration: `Bellman terminé. Tous les plus courts chemins depuis ${source} calculés.`,
+            visited: Array.from(traites),
+            frontier: [],
+            treeEdges: Object.keys(arc_associe)
+                .filter(k => arc_associe[k as unknown as NodeId] !== null)
+                .map(k => arc_associe[k as unknown as NodeId]!),
+            distances: Object.fromEntries(
+                Object.entries(distances).filter(([_, v]) => v !== Infinity)
+            ),
+        })
+    }
+
+    return steps
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BFS — O(n + m)
+// ═══════════════════════════════════════════════════════════
+function buildBfsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
+    const steps: CinemaStep[] = []
+
+    // ── Corner case 1 : graphe vide ────────────────────────
+    if (graph.nodes.length === 0) {
+        steps.push({
+            narration: `❌ Erreur : le graphe est vide.`,
+            visited: [], frontier: [], treeEdges: [],
+        })
+        return steps
+    }
+
+    // ── Corner case 2 : source inexistante ────────────────
+    if (!graph.nodes.includes(source)) {
+        steps.push({
+            narration: `❌ Erreur : la source ${source} n'existe pas dans le graphe.`,
+            visited: [], frontier: [], treeEdges: [],
+        })
+        return steps
+    }
+
+    const visited = new Set<NodeId>()
+    const queue: NodeId[] = [source]
+    const treeEdges: string[] = []
+
+    visited.add(source)
+
+    // ── Corner case 3 : source isolée (détectée au départ) ─
+    const sourceHasEdges = graph.edges.some(e => e.from === source || e.to === source)
+    const isolationNote = sourceHasEdges ? '' : ` ⚠️ La source ${source} est isolée (aucune arête).`
+
+    steps.push({
+        narration: `Départ BFS depuis ${source}.${isolationNote}`,
+        visited: [source],
+        frontier: [source],
+        treeEdges: [],
+        currentNode: source,
+    })
+
+    while (queue.length > 0) {
+        const current = queue.shift()
+
+        // ── Corner case 4 : valeur invalide dans la file ───
+        if (current === undefined || !graph.nodes.includes(current)) {
+            continue
+        }
+
+        const neighbors = neighborsFor(graph, current, true)
+
+        for (const neighbor of neighbors) {
+            // ── Corner case 5 : boucle sur soi-même (u→u) ─
+            if (neighbor.nodeId === current) {
+                steps.push({
+                    narration: `⚠️ Boucle ignorée : arête ${current}→${current} (auto-boucle).`,
+                    visited: [...visited],
+                    frontier: [...queue],
+                    treeEdges: [...treeEdges],
+                    currentNode: current,
+                    currentEdgeId: neighbor.edgeId,
+                })
+                continue
+            }
+
+            steps.push({
+                narration: `Examen de l'arête ${current} → ${neighbor.nodeId}.`,
+                visited: [...visited],
+                frontier: [...queue],
+                treeEdges: [...treeEdges],
+                currentNode: current,
+                currentEdgeId: neighbor.edgeId,
+            })
+
+            if (!visited.has(neighbor.nodeId)) {
+                visited.add(neighbor.nodeId)
+                queue.push(neighbor.nodeId)
+                treeEdges.push(neighbor.edgeId)
+                steps.push({
+                    narration: `Visite du sommet ${neighbor.nodeId} — ajouté à la frontière BFS.`,
+                    visited: [...visited],
+                    frontier: [...queue],
+                    treeEdges: [...treeEdges],
+                    currentNode: neighbor.nodeId,
+                    currentEdgeId: neighbor.edgeId,
+                })
+            }
+        }
+    }
+
+    // ── Corner case 6 : graphe non connexe ────────────────
+    const nonAtteints = graph.nodes.filter(n => !visited.has(n))
+    const finalNote = nonAtteints.length > 0
+        ? `⚠️ Graphe non connexe : ${nonAtteints.length} sommet(s) non atteignable(s) : {${nonAtteints.join(', ')}}`
+        : `✅ BFS terminé. ${visited.size} sommet(s) visité(s).`
+
+    steps.push({
+        narration: finalNote,
+        visited: [...visited],
+        frontier: [],
+        treeEdges: [...treeEdges],
+    })
+
+    return steps
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  DFS itératif — O(n + m), pas de risque de stack overflow
+// ═══════════════════════════════════════════════════════════
+function buildDfsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
+    const steps: CinemaStep[] = []
+
+    // ── Corner case 1 : graphe vide ────────────────────────
+    if (graph.nodes.length === 0) {
+        steps.push({
+            narration: `❌ Erreur : le graphe est vide.`,
+            visited: [], frontier: [], treeEdges: [], pathEdges: [],
+        })
+        return steps
+    }
+
+    // ── Corner case 2 : source inexistante ────────────────
+    if (!graph.nodes.includes(source)) {
+        steps.push({
+            narration: `❌ Erreur : la source ${source} n'existe pas dans le graphe.`,
+            visited: [], frontier: [], treeEdges: [], pathEdges: [],
+        })
+        return steps
+    }
+
+    const visited = new Set<NodeId>()
+    const treeEdges: string[] = []
+    const pathEdges: string[] = []
+
+    // Pile explicite : chaque entrée = { node, edgeId utilisé pour y arriver }
+    // On stocke aussi un itérateur de voisins pour simuler le backtrack
+    type StackFrame = { nodeId: NodeId, edgeId: string | null }
+    const stack: StackFrame[] = [{ nodeId: source, edgeId: null }]
+
+    // ── Corner case 3 : source isolée ─────────────────────
+    const sourceHasEdges = graph.edges.some(e => e.from === source || e.to === source)
+    const isolationNote = sourceHasEdges ? '' : ` ⚠️ La source ${source} est isolée (aucune arête).`
+
+    steps.push({
+        narration: `Départ DFS depuis ${source}.${isolationNote}`,
+        visited: [],
+        frontier: [source],
+        treeEdges: [],
+        currentNode: source,
+        pathEdges: [],
+    })
+
+    while (stack.length > 0) {
+        const frame = stack.pop()!
+        const { nodeId, edgeId: arrivalEdge } = frame
+
+        // ── Corner case 4 : nœud déjà visité (cycle détecté) ─
+        if (visited.has(nodeId)) {
+            steps.push({
+                narration: `Sommet ${nodeId} déjà visité — arête de retour ignorée (cycle).`,
+                visited: [...visited],
+                frontier: stack.map(f => f.nodeId),
+                treeEdges: [...treeEdges],
+                currentNode: nodeId,
+                pathEdges: [...pathEdges],
+            })
+            continue
+        }
+
+        // Visiter le nœud
+        visited.add(nodeId)
+        if (arrivalEdge) {
+            treeEdges.push(arrivalEdge)
+            pathEdges.push(arrivalEdge)
+        }
+
+        steps.push({
+            narration: `Entrée dans le sommet ${nodeId}.`,
+            visited: [...visited],
+            frontier: stack.map(f => f.nodeId),
+            treeEdges: [...treeEdges],
+            currentNode: nodeId,
+            pathEdges: [...pathEdges],
+        })
+
+        const neighbors = neighborsFor(graph, nodeId)
+
+        // Pousser en ordre inverse pour traiter dans l'ordre naturel
+        const toVisit: StackFrame[] = []
+        for (const neighbor of neighbors) {
+
+            // ── Corner case 5 : boucle sur soi-même ────────
+            if (neighbor.nodeId === nodeId) {
+                steps.push({
+                    narration: `⚠️ Auto-boucle ignorée : arête ${nodeId}→${nodeId}.`,
+                    visited: [...visited],
+                    frontier: stack.map(f => f.nodeId),
+                    treeEdges: [...treeEdges],
+                    currentNode: nodeId,
+                    currentEdgeId: neighbor.edgeId,
+                    pathEdges: [...pathEdges],
+                })
+                continue
+            }
+
+            steps.push({
+                narration: `Examen de l'arête ${nodeId} → ${neighbor.nodeId}.`,
+                visited: [...visited],
+                frontier: stack.map(f => f.nodeId),
+                treeEdges: [...treeEdges],
+                currentNode: nodeId,
+                currentEdgeId: neighbor.edgeId,
+                pathEdges: [...pathEdges],
+            })
+
+            if (!visited.has(neighbor.nodeId)) {
+                toVisit.push({ nodeId: neighbor.nodeId, edgeId: neighbor.edgeId })
+            }
+        }
+
+        // Inverser pour conserver l'ordre d'exploration
+        for (let i = toVisit.length - 1; i >= 0; i--) {
+            stack.push(toVisit[i])
+        }
+    }
+
+    // ── Corner case 6 : graphe non connexe ────────────────
+    const nonAtteints = graph.nodes.filter(n => !visited.has(n))
+    const finalNote = nonAtteints.length > 0
+        ? `⚠️ Graphe non connexe : ${nonAtteints.length} sommet(s) non atteignable(s) : {${nonAtteints.join(', ')}}`
+        : `✅ DFS terminé. ${visited.size} sommet(s) visité(s).`
+
+    steps.push({
+        narration: finalNote,
+        visited: [...visited],
+        frontier: [],
+        treeEdges: [...treeEdges],
+        pathEdges: [],
+    })
+
+    return steps
 }
 
 function buildDijkstraProgram(graph: GraphState, source: NodeId): CinemaStep[] {
