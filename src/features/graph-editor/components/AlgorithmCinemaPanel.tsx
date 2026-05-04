@@ -1,5 +1,5 @@
 import type { NodeId } from '../../graph/model/types'
-import type { CinemaAlgorithm } from '../utils/algorithmCinema'
+import type {CinemaAlgorithm, CinemaStep} from '../utils/algorithmCinema'
 import { useI18n } from '../../../shared/context/I18nContext'
 import { AlgorithmEducationalCard } from './AlgorithmEducationalCard'
 
@@ -117,15 +117,15 @@ export function AlgorithmCinemaPanel({
               <option value="Dijkstra">Dijkstra</option>
               <option value="Prims">Prim&apos;s MST</option>
               <option value="Kruskals">Kruskal&apos;s MST</option>
-              <option value="MaxFlow">MaxFlow</option>
-              <option value="ConnectedComponents">Components</option>
-              <option value="SpanningForest">Spanning Forest</option>
-              <option value="StronglyConnectedComponents">SCC</option>
+              <option value="MaxFlow">{t('cinema.maxFlow')}</option>
+              <option value="ConnectedComponents">{t('cinema.components')}</option>
+              <option value="SpanningForest">{t('cinema.forest')}</option>
+              <option value="StronglyConnectedComponents">{t('cinema.strongComponents')}</option>
               <option value="Bellman">Bellman</option>
               <option value="BellmanFord">Bellman-Ford</option>
               <option value="WelshPowell">Welsh-Powell</option>
               <option value="EulerienPath">Euler</option>
-              <option value="RechercheChaine">Chain Search</option>
+              <option value="RechercheChaine">{t('cinema.chain')}</option>
               
             </select>
           </div>
