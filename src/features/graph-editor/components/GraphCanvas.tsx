@@ -252,6 +252,7 @@ function EdgeItem({
   setFlowDraft,
   commitFlow,
   setEditingFlowEdgeId,
+  currentFlowValue
 
 }: any) {
   const pathRef = useRef<SVGPathElement>(null)
@@ -366,7 +367,7 @@ function EdgeItem({
               className="pointer-events-none font-mono text-[11px] font-bold"
               style={{ fill: colorScheme === 'dark' ? '#ffffff' : '#0369a1' }}
             >
-                           {isMaxFlow ? `${edge.flow ?? 0}/${edge.weight}` : edge.weight}
+                {isMaxFlow ? `${currentFlowValue}/${edge.weight}` : edge.weight}
             </text>
           )}
         </g>
@@ -382,7 +383,8 @@ function EdgeItem({
             cy={geometry.labelY + 22}
             r={14}
             fill="#1e1b4b"
-            stroke="#22c55e"
+             // ← rouge si saturé, vert sinon
+            stroke={currentFlowValue >= Math.max(1, edge.weight) ? '#ef4444' : '#22c55e'}
             strokeWidth={1.5}
           />
           {editingFlowEdgeId === edge.id ? (
@@ -411,13 +413,14 @@ function EdgeItem({
               />
             </foreignObject>
           ) : (
-            <text
-              x={geometry.labelX}
-              y={geometry.labelY + 26}
-              textAnchor="middle"
-              className="pointer-events-none fill-green-300 text-[11px] font-bold"
-            >
-              f:{edge.flow ?? 0}
+              <text
+                x={geometry.labelX}
+                y={geometry.labelY + 26}
+                textAnchor="middle"
+                className="pointer-events-none text-[11px] font-bold"
+                fill={currentFlowValue >= Math.max(1, edge.weight) ? '#ef4444' : '#86efac'}
+              >
+              f:{currentFlowValue} {/* ← au lieu de edge.flow ?? 0 */}
             </text>
           )}
         </g>
@@ -1597,7 +1600,16 @@ function exportFlowResult() {
                 }}
               />
             </marker>
-
+             <marker
+    id="arrow-backward"
+    markerWidth="12"
+    markerHeight="12"
+    refX="9"
+    refY="6"
+    orient="auto"
+  >
+    <path d="M0,1 L6,4 L0,7 L2,4 z" fill="#f97316" />
+  </marker>
           </defs>
 
           <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
@@ -1746,6 +1758,11 @@ function exportFlowResult() {
                   startFlowEdit={startFlowEdit}           // ← AJOUTER
                   setFlowDraft={setFlowDraft}             // ← AJOUTER
                   commitFlow={commitFlow}                 // ← AJOUTER
+                  currentFlowValue={
+                    cinemaAlgorithm === 'MaxFlow' && currentCinemaStep?.flowByEdge
+                      ? (currentCinemaStep.flowByEdge[edge.id] ?? edge.flow ?? 0)
+                      : (edge.flow ?? 0)
+                  }
 
                 />
               )
@@ -1937,16 +1954,25 @@ function exportFlowResult() {
               const capacity = Math.max(1, edge.weight)
               const ratio = Math.max(0.05, Math.min(1, flow / capacity))
               const isSaturated = currentCinemaStep?.saturatedEdgeIds?.includes(edge.id) ?? false
+                // ── Couleur : saturée = rouge, sinon couleur du chemin qui l'a utilisé ──
+              const pathColor = currentCinemaStep?.allPathColors?.[edge.id]
+             /* const stroke = isSaturated
+                ? '#ef4444'
+                : (pathColor ?? '#60a5fa')  // ← couleur du chemin ou bleu par défaut*/
+              const isOnCurrentPath = currentCinemaStep?.augmentingEdgeIds?.includes(edge.id) ?? false
+              const stroke = isSaturated
+                ? '#ef4444'
+                : isOnCurrentPath
+                  ? (currentCinemaStep?.augmentingPathColor ?? '#60a5fa')
+                  : '#60a5fa'  // ← bleu neutre si pas sur le chemin actif
 
               return (
                 <path
                   key={`flow-${edge.id}-${cinemaStepIndex}`}
                   d={geometry.path}
                   fill="none"
-                  stroke={isSaturated
-                    ? (colorScheme === 'dark' ? '#ef4444' : '#b91c1c')
-                    : (colorScheme === 'dark' ? '#60a5fa' : '#1d4ed8')}
-                  strokeWidth={Math.max(2, 8 * ratio)}
+                  stroke={stroke}
+                  /*strokeWidth={Math.max(2, 8 * ratio)}*/
                   strokeLinecap="round"
                   opacity={0.75}
                   className={isSaturated ? 'flow-saturated' : undefined}
@@ -1962,17 +1988,123 @@ function exportFlowResult() {
               return (
                 <path
                   key={`augmenting-${edgeId}-${cinemaStepIndex}`}
+                  data-augmenting-id={edgeId}
                   d={geometry.path}
                   fill="none"
-                  stroke={colorScheme === 'dark' ? '#a78bfa' : '#6d28d9'}
+                  stroke={currentCinemaStep.augmentingPathColor ?? '#f8fafc'}  // ← couleur dynamique
                   strokeWidth={3}
                   strokeLinecap="round"
                   strokeDasharray="10 6"
-                  className="augmenting-pulse"
+                  opacity={1}
+                  
                 />
               )
             })}
+                {/* ── — après la fermeture du bloc augmenting -- fleche indiquant flot annulable */}
+    {cinemaAlgorithm === 'MaxFlow' &&
+    currentCinemaStep?.augmentingEdgeIds?.map((edgeId, i) => {
+      const direction = currentCinemaStep?.augmentingPathDirections?.[i]
+      if (direction !== -1) return null
 
+      const edge = graph.edges.find(e => e.id === edgeId)
+      if (!edge) return null
+
+      const geometry = edgeGeometryById.get(edgeId)
+      if (!geometry) return null
+
+      const flow = currentCinemaStep?.flowByEdge?.[edgeId] ?? 0
+      // ── Calculer une position qui évite les nœuds ─────────────────────────
+  // On prend la position des deux nœuds de l'arête
+  const fromPos = graph.positions[edge.from]
+  const toPos   = graph.positions[edge.to]
+  if (!fromPos || !toPos) return null
+   // Milieu de l'arête
+  const midX = (fromPos.x + toPos.x) / 2
+  const midY = (fromPos.y + toPos.y) / 2
+
+  // Vecteur normal à l'arête — pour décaler perpendiculairement
+  const dx = toPos.x - fromPos.x
+  const dy = toPos.y - fromPos.y
+  const len = Math.hypot(dx, dy)
+  const nx = -dy / len  // normal
+  const ny =  dx / len
+
+  // Décaler de 60px perpendiculairement + 20px supplémentaires
+  // pour s'éloigner des nœuds
+  const offsetDist = 70
+  const labelX = midX + nx * offsetDist
+  const labelY = midY + ny * offsetDist
+      return (
+    <g key={`backward-svg-${edgeId}-${cinemaStepIndex}`}>
+      {/* Ligne de connexion du milieu de l'arête au label */}
+      <line
+        x1={midX}
+        y1={midY}
+        x2={labelX}
+        y2={labelY}
+        stroke="#f97316"
+        strokeWidth={1.5}
+        strokeDasharray="4 3"
+      />
+      {/* Point au milieu de l'arête */}
+      <circle
+        cx={midX}
+        cy={midY}
+        r={4}
+        fill="#f97316"
+        opacity={0.8}
+      />
+      {/* Badge */}
+      <rect
+        x={labelX - 75}
+        y={labelY - 14}
+        width={150}
+        height={26}
+        rx={6}
+        fill="rgba(15,23,42,0.95)"
+        stroke="#f97316"
+        strokeWidth={1.5}
+      />
+      <text
+        x={labelX}
+        y={labelY + 3}
+        textAnchor="middle"
+        fontSize="11"
+        fontWeight="700"
+        fill="#f97316"
+      >
+        ↩ ({edge.from},{edge.to}) annulable={flow}
+      </text>
+    </g>
+  )
+    })}
+{/* ─────────────────────────────────────────────────────────────────────── */}
+{/* Fin ajout de fleche indiquant flot annulant  */}
+                        {/* ── AJOUTER ICI — strictement MaxFlow uniquement ─────────────────────── */}
+            {cinemaAlgorithm === 'MaxFlow' &&
+            currentCinemaStep?.augmentingEdgeIds?.map((edgeId) => {
+              const geometry = edgeGeometryById.get(edgeId)
+              if (!geometry) return null
+
+              // On crée un ref temporaire pour EdgeFlowParticles
+              // en réutilisant le path déjà rendu via un selector SVG
+              const pathEl = svgRef.current?.querySelector(
+                `path[data-augmenting-id="${edgeId}"]`
+              ) as SVGPathElement | null
+
+              if (!pathEl) return null
+
+              return (
+                <EdgeFlowParticles
+                  key={`aug-particles-${edgeId}-${cinemaStepIndex}`}
+                  pathRef={{ current: pathEl }}
+                  speed={2.5}
+                  isActive={true}
+                  color={currentCinemaStep.augmentingPathColor ?? '#f59e0b'}
+                />
+              )
+            })}
+            {/* ────────────────────────────────────────────────────────────────────── */}
             {edgeDraftPosition !== null && cursorPosition !== null && (
               <line
                 x1={edgeDraftPosition.x}
@@ -2221,9 +2353,108 @@ function exportFlowResult() {
               </>
             )
           })()}
+          {cinemaAlgorithm === 'MaxFlow' && cinemaProgram && (
+              <g transform="translate(18, 440)">
+              <rect width="200" height="110" rx="8"
+                fill="rgba(15,23,42,0.85)"
+                stroke="rgba(99,102,241,0.4)"
+              />
+
+              {/* Chemin augmentant */}
+              <line x1="10" y1="20" x2="24" y2="20"
+                stroke="#f59e0b" strokeWidth="3" strokeDasharray="4 2"/>
+              <text x="30" y="24" fontSize="11" fill="#e2e8f0">
+                Chemin augmentant
+              </text>
+
+              {/* Arête saturée */}
+              <line x1="10" y1="40" x2="24" y2="40"
+                stroke="#ef4444" strokeWidth="3"/>
+              <text x="30" y="44" fontSize="11" fill="#e2e8f0">
+                Arête saturée
+              </text>
+
+              {/* V(f) courant */}
+              <text x="10" y="70" fontSize="11"
+                fill="#60a5fa" fontWeight="600">
+                V(f) = {
+                  graph.edges
+                    .filter(e => e.from === cinemaSourceNode)
+                    .reduce((sum, e) =>
+                      sum + (currentCinemaStep?.flowByEdge?.[e.id] ?? 0), 0)
+                }
+              </text>
+            </g>
+          )}
           {/* ─────────────────────────────────────────────────────────── */}
           </g>
         </svg>
+           {/* ── Bannières arcs arrière ───────────────────────────────────────── */}
+        {cinemaAlgorithm === 'MaxFlow' &&
+         currentCinemaStep?.augmentingEdgeIds &&
+         currentCinemaStep.augmentingEdgeIds.some((_, i) =>
+           currentCinemaStep?.augmentingPathDirections?.[i] === -1
+         ) && (
+          <div style={{
+            position: 'absolute',
+            top: 12,
+            right: 140,
+            zIndex: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}>
+            <div style={{
+              background: 'rgba(15,23,42,0.95)',
+              border: '1.5px solid #f97316',
+              borderRadius: 8,
+              padding: '4px 12px',
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#94a3b8',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}>
+              Arcs arrière détectés
+            </div>
+            {currentCinemaStep.augmentingEdgeIds.map((edgeId, i) => {
+              const direction = currentCinemaStep?.augmentingPathDirections?.[i]
+              if (direction !== -1) return null
+              const edge = graph.edges.find(e => e.id === edgeId)
+              if (!edge) return null
+              const flow = currentCinemaStep?.flowByEdge?.[edgeId] ?? 0
+              return (
+                <div
+                  key={`backward-banner-${edgeId}`}
+                  style={{
+                    background: 'rgba(15,23,42,0.95)',
+                    border: '1.5px solid #f97316',
+                    borderRadius: 8,
+                    padding: '6px 14px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#f97316',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>↩</span>
+                  <div>
+                    <div style={{ fontSize: 13, color: '#f97316' }}>
+                      Arc ({edge.from},{edge.to})
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                      Flot annulable = {flow} unités
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {/* ────────────────────────────────────────────────────────────────── */}
 
         <div className="absolute bottom-4 right-4 rounded-lg border p-1.5 shadow-lg" style={{ borderColor: 'var(--app-border)', backgroundColor: 'var(--app-surface-strong)' }}>
           <svg
