@@ -445,15 +445,12 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
   return steps
 }
 
+//PRIM optimization with priority queue (min-heap) O(E log E ) instead of O(V * E) for naive Prim
 function buildPrimsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
   const steps: CinemaStep[] = []
 
-  // ── Vérification graphe non dirigé ───────────────────────────────────────
   if (graph.directed) {
-    steps.push({
-      narration: "Prim nécessite un graphe non orienté.",
-      visited: [], frontier: [], treeEdges: [],
-    })
+    steps.push({ narration: "Prim nécessite un graphe non orienté.", visited: [], frontier: [], treeEdges: [] })
     return steps
   }
 
@@ -461,108 +458,89 @@ function buildPrimsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
   const mstEdges: string[] = []
   let totalWeight = 0
 
-  // ── PHASE 0 : Initialisation ──────────────────────────────────────────────
+  // ── Min-heap simulé : toutes les arêtes incidentes à la frontière ─────────
+  // { edge, weight } triées par poids croissant
+  // Au lieu de rescanner TOUTES les arêtes à chaque itération,
+  // on maintient uniquement les arêtes candidates (frontière de coupe)
+  type Candidate = { edge: GraphEdge; weight: number }
+  
+  // Initialisation : arêtes incidentes à la source
+  let heap: Candidate[] = graph.edges
+    .filter(e => e.from === source || e.to === source)
+    .map(e => ({ edge: e, weight: e.weight }))
+    .sort((a, b) => a.weight - b.weight)
+
   steps.push({
-    narration: `Initialisation — On part du nœud ${source}. `
-             + `Tous les autres nœuds {${graph.nodes.filter(n => n !== source).join(', ')}} `
-             + `sont non visités. L'arbre MST est vide.`,
+    narration: `Initialisation — Source : ${source}. `
+             + `File de priorité initialisée avec ${heap.length} arête(s) incidente(s) : `
+             + `${heap.map(c => `(${c.edge.from},${c.edge.to}) w=${c.weight}`).join(' | ')}.`,
     visited: [source],
     frontier: graph.nodes.filter(n => n !== source),
     treeEdges: [],
-    currentNode: source,
     mstEdges: [],
     mstWeight: 0,
   })
 
-  while (visited.size < graph.nodes.length) {
+  while (heap.length > 0 && visited.size < graph.nodes.length) {
 
-    // ── PHASE 1 : Identifier les arêtes candidates (la coupe) ─────────────
-    const candidates: GraphEdge[] = []
-    for (const edge of graph.edges) {
-      const fromVisited = visited.has(edge.from)
-      const toVisited   = visited.has(edge.to)
-      if (fromVisited !== toVisited) {
-        candidates.push(edge)
-      }
-    }
-
-    if (candidates.length === 0) break
-
-    steps.push({
-      narration: `Coupe actuelle — Visités : {${[...visited].join(', ')}}. `
-               + `Non-visités : {${graph.nodes.filter(n => !visited.has(n)).join(', ')}}. `
-               + `Arêtes candidates : ${candidates.map(e => `(${e.from},${e.to}) w=${e.weight}`).join(' | ')}.`,
-      visited: [...visited],
-      frontier: graph.nodes.filter(n => !visited.has(n)),
-      treeEdges: [...mstEdges],
-      mstEdges: [...mstEdges],
-      mstWeight: totalWeight,
-    })
-
-    // ── PHASE 2 : Examiner chaque candidat ───────────────────────────────
-    let best: GraphEdge | null = null
-
-    for (const edge of candidates) {
-      const isBetter = best === null || edge.weight < best.weight
-      const isEqual  = best !== null && edge.weight === best.weight
-      const isWorse  = best !== null && edge.weight > best.weight
-
+    // ── Extraire le minimum (O(1) si vrai heap, O(n) ici par sort) ────────
+    // On retire les arêtes dont les deux extrémités sont déjà visitées (invalides)
+    while (heap.length > 0 && visited.has(heap[0].edge.from) && visited.has(heap[0].edge.to)) {
+      const stale = heap.shift()!
       steps.push({
-        narration: isBetter
-          ? best === null
-            ? `Examen de (${edge.from},${edge.to}) w=${edge.weight} → première candidate, retenue.`
-            : `Examen de (${edge.from},${edge.to}) w=${edge.weight} → meilleure que (${best.from},${best.to}) w=${best.weight}, remplace la candidate.`
-          : isEqual
-            ? `Examen de (${edge.from},${edge.to}) w=${edge.weight} → même poids que (${best!.from},${best!.to}) w=${best!.weight}, on garde la première trouvée.`
-            : `Examen de (${edge.from},${edge.to}) w=${edge.weight} → plus coûteuse que (${best!.from},${best!.to}) w=${best!.weight}, ignorée.`,
+        narration: `Arête (${stale.edge.from},${stale.edge.to}) w=${stale.weight} ignorée — les deux nœuds sont déjà dans le MST.`,
         visited: [...visited],
         frontier: graph.nodes.filter(n => !visited.has(n)),
         treeEdges: [...mstEdges],
-        currentEdgeId: edge.id,
+        currentEdgeId: stale.edge.id,
+        rejectedEdgeId: stale.edge.id,
         mstEdges: [...mstEdges],
         mstWeight: totalWeight,
-        ...(isBetter
-          ? { mstNewEdgeId: edge.id }
-          : isWorse
-            ? { rejectedEdgeId: edge.id }
-            : {}  // égale → ni vert ni rouge, juste examinée
-        ),
       })
-
-      if (isBetter) best = edge
     }
 
-    // ── PHASE 3 : Ajouter la meilleure arête à l'arbre ────────────────────
-    if (best === null) break
+    if (heap.length === 0) break
 
-    const nextNode = visited.has(best.from) ? best.to : best.from
+    // ── Meilleure arête de coupe ───────────────────────────────────────────
+    const best = heap.shift()!
+
+    const nextNode = visited.has(best.edge.from) ? best.edge.to : best.edge.from
     visited.add(nextNode)
-    mstEdges.push(best.id)
+    mstEdges.push(best.edge.id)
     totalWeight += best.weight
 
     steps.push({
-      narration: `Choix — (${best.from},${best.to}) w=${best.weight} est la moins coûteuse parmi les candidates. `
-               + `On ajoute le nœud ${nextNode} à l'arbre. `
-               + `Poids total MST = ${totalWeight}.`,
+      narration: `✅ Meilleure arête de coupe : (${best.edge.from},${best.edge.to}) w=${best.weight}. `
+               + `Nœud ${nextNode} ajouté au MST. Poids cumulé = ${totalWeight}.`,
       visited: [...visited],
       frontier: graph.nodes.filter(n => !visited.has(n)),
       treeEdges: [...mstEdges],
       currentNode: nextNode,
-      currentEdgeId: best.id,
+      currentEdgeId: best.edge.id,
       mstEdges: [...mstEdges],
-      mstNewEdgeId: best.id,
+      mstNewEdgeId: best.edge.id,
       mstWeight: totalWeight,
     })
 
-    // ── PHASE 4 : Bilan de l'itération ───────────────────────────────────
-    const remaining = graph.nodes.filter(n => !visited.has(n))
-    if (remaining.length > 0) {
+    // ── Ajouter au heap les nouvelles arêtes incidentes au nœud ajouté ────
+    // C'est ici le gain clé : on n'ajoute QUE les arêtes du nouveau nœud
+    const newCandidates = graph.edges
+      .filter(e =>
+        (e.from === nextNode || e.to === nextNode) &&
+        !(visited.has(e.from) && visited.has(e.to)) // exclure les arêtes internes
+      )
+      .map(e => ({ edge: e, weight: e.weight }))
+
+    if (newCandidates.length > 0) {
+      heap.push(...newCandidates)
+      heap.sort((a, b) => a.weight - b.weight) // re-trier (O(E log E) au total)
+
       steps.push({
-        narration: `Bilan — MST contient ${mstEdges.length} arête(s), poids cumulé = ${totalWeight}. `
-                 + `Il reste ${remaining.length} nœud(s) à visiter : {${remaining.join(', ')}}. `
-                 + `On recommence avec la nouvelle coupe.`,
+        narration: `File mise à jour — ${newCandidates.length} nouvelle(s) arête(s) ajoutée(s) depuis ${nextNode} : `
+                 + `${newCandidates.map(c => `(${c.edge.from},${c.edge.to}) w=${c.weight}`).join(' | ')}. `
+                 + `File : ${heap.slice(0, 4).map(c => `(${c.edge.from},${c.edge.to}) w=${c.weight}`).join(' | ')}${heap.length > 4 ? '...' : ''}.`,
         visited: [...visited],
-        frontier: remaining,
+        frontier: graph.nodes.filter(n => !visited.has(n)),
         treeEdges: [...mstEdges],
         mstEdges: [...mstEdges],
         mstWeight: totalWeight,
@@ -570,19 +548,12 @@ function buildPrimsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
     }
   }
 
-  // ── PHASE FINALE ──────────────────────────────────────────────────────────
   const isComplete = visited.size === graph.nodes.length
   steps.push({
     narration: isComplete
-      ? `Prim terminé ✓ — L'arbre couvrant minimal est complet. `
-      + `${mstEdges.length} arête(s), poids total = ${totalWeight}. `
-      + `Arêtes MST : ${mstEdges.map(eid => {
-          const e = graph.edges.find(x => x.id === eid)
-          return e ? `(${e.from},${e.to}) w=${e.weight}` : eid
-        }).join(', ')}.`
-      : `Prim terminé — Graphe non connexe. `
-      + `Arbre partiel : ${mstEdges.length} arête(s), poids = ${totalWeight}. `
-      + `Nœuds non atteints : {${graph.nodes.filter(n => !visited.has(n)).join(', ')}}.`,
+      ? `Prim ✓ — MST complet. ${mstEdges.length} arête(s), poids total = ${totalWeight}. `
+        + `Arêtes : ${mstEdges.map(eid => { const e = graph.edges.find(x => x.id === eid); return e ? `(${e.from},${e.to}) w=${e.weight}` : eid }).join(', ')}.`
+      : `Prim — Graphe non connexe. Arbre partiel : ${mstEdges.length} arête(s), poids = ${totalWeight}.`,
     visited: [...visited],
     frontier: [],
     treeEdges: [...mstEdges],
