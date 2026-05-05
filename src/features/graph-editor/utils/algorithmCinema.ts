@@ -445,15 +445,12 @@ function buildKruskalsProgram(graph: GraphState): CinemaStep[] {
   return steps
 }
 
+//PRIM optimization with priority queue (min-heap) O(E log E ) instead of O(V * E) for naive Prim
 function buildPrimsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
   const steps: CinemaStep[] = []
 
-  // ── Vérification graphe non dirigé ───────────────────────────────────────
   if (graph.directed) {
-    steps.push({
-      narration: "Prim nécessite un graphe non orienté.",
-      visited: [], frontier: [], treeEdges: [],
-    })
+    steps.push({ narration: "Prim nécessite un graphe non orienté.", visited: [], frontier: [], treeEdges: [] })
     return steps
   }
 
@@ -461,108 +458,89 @@ function buildPrimsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
   const mstEdges: string[] = []
   let totalWeight = 0
 
-  // ── PHASE 0 : Initialisation ──────────────────────────────────────────────
+  // ── Min-heap simulé : toutes les arêtes incidentes à la frontière ─────────
+  // { edge, weight } triées par poids croissant
+  // Au lieu de rescanner TOUTES les arêtes à chaque itération,
+  // on maintient uniquement les arêtes candidates (frontière de coupe)
+  type Candidate = { edge: GraphEdge; weight: number }
+  
+  // Initialisation : arêtes incidentes à la source
+  let heap: Candidate[] = graph.edges
+    .filter(e => e.from === source || e.to === source)
+    .map(e => ({ edge: e, weight: e.weight }))
+    .sort((a, b) => a.weight - b.weight)
+
   steps.push({
-    narration: `Initialisation — On part du nœud ${source}. `
-             + `Tous les autres nœuds {${graph.nodes.filter(n => n !== source).join(', ')}} `
-             + `sont non visités. L'arbre MST est vide.`,
+    narration: `Initialisation — Source : ${source}. `
+             + `File de priorité initialisée avec ${heap.length} arête(s) incidente(s) : `
+             + `${heap.map(c => `(${c.edge.from},${c.edge.to}) w=${c.weight}`).join(' | ')}.`,
     visited: [source],
     frontier: graph.nodes.filter(n => n !== source),
     treeEdges: [],
-    currentNode: source,
     mstEdges: [],
     mstWeight: 0,
   })
 
-  while (visited.size < graph.nodes.length) {
+  while (heap.length > 0 && visited.size < graph.nodes.length) {
 
-    // ── PHASE 1 : Identifier les arêtes candidates (la coupe) ─────────────
-    const candidates: GraphEdge[] = []
-    for (const edge of graph.edges) {
-      const fromVisited = visited.has(edge.from)
-      const toVisited   = visited.has(edge.to)
-      if (fromVisited !== toVisited) {
-        candidates.push(edge)
-      }
-    }
-
-    if (candidates.length === 0) break
-
-    steps.push({
-      narration: `Coupe actuelle — Visités : {${[...visited].join(', ')}}. `
-               + `Non-visités : {${graph.nodes.filter(n => !visited.has(n)).join(', ')}}. `
-               + `Arêtes candidates : ${candidates.map(e => `(${e.from},${e.to}) w=${e.weight}`).join(' | ')}.`,
-      visited: [...visited],
-      frontier: graph.nodes.filter(n => !visited.has(n)),
-      treeEdges: [...mstEdges],
-      mstEdges: [...mstEdges],
-      mstWeight: totalWeight,
-    })
-
-    // ── PHASE 2 : Examiner chaque candidat ───────────────────────────────
-    let best: GraphEdge | null = null
-
-    for (const edge of candidates) {
-      const isBetter = best === null || edge.weight < best.weight
-      const isEqual  = best !== null && edge.weight === best.weight
-      const isWorse  = best !== null && edge.weight > best.weight
-
+    // ── Extraire le minimum (O(1) si vrai heap, O(n) ici par sort) ────────
+    // On retire les arêtes dont les deux extrémités sont déjà visitées (invalides)
+    while (heap.length > 0 && visited.has(heap[0].edge.from) && visited.has(heap[0].edge.to)) {
+      const stale = heap.shift()!
       steps.push({
-        narration: isBetter
-          ? best === null
-            ? `Examen de (${edge.from},${edge.to}) w=${edge.weight} → première candidate, retenue.`
-            : `Examen de (${edge.from},${edge.to}) w=${edge.weight} → meilleure que (${best.from},${best.to}) w=${best.weight}, remplace la candidate.`
-          : isEqual
-            ? `Examen de (${edge.from},${edge.to}) w=${edge.weight} → même poids que (${best!.from},${best!.to}) w=${best!.weight}, on garde la première trouvée.`
-            : `Examen de (${edge.from},${edge.to}) w=${edge.weight} → plus coûteuse que (${best!.from},${best!.to}) w=${best!.weight}, ignorée.`,
+        narration: `Arête (${stale.edge.from},${stale.edge.to}) w=${stale.weight} ignorée — les deux nœuds sont déjà dans le MST.`,
         visited: [...visited],
         frontier: graph.nodes.filter(n => !visited.has(n)),
         treeEdges: [...mstEdges],
-        currentEdgeId: edge.id,
+        currentEdgeId: stale.edge.id,
+        rejectedEdgeId: stale.edge.id,
         mstEdges: [...mstEdges],
         mstWeight: totalWeight,
-        ...(isBetter
-          ? { mstNewEdgeId: edge.id }
-          : isWorse
-            ? { rejectedEdgeId: edge.id }
-            : {}  // égale → ni vert ni rouge, juste examinée
-        ),
       })
-
-      if (isBetter) best = edge
     }
 
-    // ── PHASE 3 : Ajouter la meilleure arête à l'arbre ────────────────────
-    if (best === null) break
+    if (heap.length === 0) break
 
-    const nextNode = visited.has(best.from) ? best.to : best.from
+    // ── Meilleure arête de coupe ───────────────────────────────────────────
+    const best = heap.shift()!
+
+    const nextNode = visited.has(best.edge.from) ? best.edge.to : best.edge.from
     visited.add(nextNode)
-    mstEdges.push(best.id)
+    mstEdges.push(best.edge.id)
     totalWeight += best.weight
 
     steps.push({
-      narration: `Choix — (${best.from},${best.to}) w=${best.weight} est la moins coûteuse parmi les candidates. `
-               + `On ajoute le nœud ${nextNode} à l'arbre. `
-               + `Poids total MST = ${totalWeight}.`,
+      narration: `✅ Meilleure arête de coupe : (${best.edge.from},${best.edge.to}) w=${best.weight}. `
+               + `Nœud ${nextNode} ajouté au MST. Poids cumulé = ${totalWeight}.`,
       visited: [...visited],
       frontier: graph.nodes.filter(n => !visited.has(n)),
       treeEdges: [...mstEdges],
       currentNode: nextNode,
-      currentEdgeId: best.id,
+      currentEdgeId: best.edge.id,
       mstEdges: [...mstEdges],
-      mstNewEdgeId: best.id,
+      mstNewEdgeId: best.edge.id,
       mstWeight: totalWeight,
     })
 
-    // ── PHASE 4 : Bilan de l'itération ───────────────────────────────────
-    const remaining = graph.nodes.filter(n => !visited.has(n))
-    if (remaining.length > 0) {
+    // ── Ajouter au heap les nouvelles arêtes incidentes au nœud ajouté ────
+    // C'est ici le gain clé : on n'ajoute QUE les arêtes du nouveau nœud
+    const newCandidates = graph.edges
+      .filter(e =>
+        (e.from === nextNode || e.to === nextNode) &&
+        !(visited.has(e.from) && visited.has(e.to)) // exclure les arêtes internes
+      )
+      .map(e => ({ edge: e, weight: e.weight }))
+
+    if (newCandidates.length > 0) {
+      heap.push(...newCandidates)
+      heap.sort((a, b) => a.weight - b.weight) // re-trier (O(E log E) au total)
+
       steps.push({
-        narration: `Bilan — MST contient ${mstEdges.length} arête(s), poids cumulé = ${totalWeight}. `
-                 + `Il reste ${remaining.length} nœud(s) à visiter : {${remaining.join(', ')}}. `
-                 + `On recommence avec la nouvelle coupe.`,
+        narration: `File mise à jour — ${newCandidates.length} nouvelle(s) arête(s) ajoutée(s) depuis ${nextNode} : `
+                 + `${newCandidates.map(c => `(${c.edge.from},${c.edge.to}) w=${c.weight}`).join(' | ')}. `
+                 + `File : ${heap.slice(0, 4).map(c => `(${c.edge.from},${c.edge.to}) w=${c.weight}`).join(' | ')}${heap.length > 4 ? '...' : ''}.`,
         visited: [...visited],
-        frontier: remaining,
+        frontier: graph.nodes.filter(n => !visited.has(n)),
         treeEdges: [...mstEdges],
         mstEdges: [...mstEdges],
         mstWeight: totalWeight,
@@ -570,19 +548,12 @@ function buildPrimsProgram(graph: GraphState, source: NodeId): CinemaStep[] {
     }
   }
 
-  // ── PHASE FINALE ──────────────────────────────────────────────────────────
   const isComplete = visited.size === graph.nodes.length
   steps.push({
     narration: isComplete
-      ? `Prim terminé ✓ — L'arbre couvrant minimal est complet. `
-      + `${mstEdges.length} arête(s), poids total = ${totalWeight}. `
-      + `Arêtes MST : ${mstEdges.map(eid => {
-          const e = graph.edges.find(x => x.id === eid)
-          return e ? `(${e.from},${e.to}) w=${e.weight}` : eid
-        }).join(', ')}.`
-      : `Prim terminé — Graphe non connexe. `
-      + `Arbre partiel : ${mstEdges.length} arête(s), poids = ${totalWeight}. `
-      + `Nœuds non atteints : {${graph.nodes.filter(n => !visited.has(n)).join(', ')}}.`,
+      ? `Prim ✓ — MST complet. ${mstEdges.length} arête(s), poids total = ${totalWeight}. `
+        + `Arêtes : ${mstEdges.map(eid => { const e = graph.edges.find(x => x.id === eid); return e ? `(${e.from},${e.to}) w=${e.weight}` : eid }).join(', ')}.`
+      : `Prim — Graphe non connexe. Arbre partiel : ${mstEdges.length} arête(s), poids = ${totalWeight}.`,
     visited: [...visited],
     frontier: [],
     treeEdges: [...mstEdges],
@@ -597,73 +568,73 @@ function bfsAugmentingPath(
   source: NodeId,
   sink: NodeId,
   flowByEdge: Map<string, number>,
-): { edgeIds: string[]; bottleneck: number } | null {
-  const previousNode = new Map<NodeId, NodeId>()
-  const previousEdge = new Map<NodeId, string>()
-  const previousDirection = new Map<NodeId, 1 | -1>()
-  const queue: NodeId[] = [source]
-  const visited = new Set<NodeId>([source])
-  const byId = edgeById(graph)
+): { edgeIds: string[]; directions: (1 | -1)[]; bottleneck: number } | null {
 
+  const visited = new Set<NodeId>([source])
+  const parentNode = new Map<NodeId, NodeId>()
+  const parentEdge = new Map<NodeId, string>()
+  const parentDirection = new Map<NodeId, 1 | -1>()
+  const queue: NodeId[] = [source]
+
+  // ── BFS (seule différence avec DFS : queue FIFO au lieu de pile récursive) ──
   while (queue.length > 0) {
-    const current = queue.shift()
-    if (typeof current !== 'number') {
-      continue
-    }
+    const current = queue.shift()!
+
+    if (current === sink) break
 
     for (const edge of graph.edges) {
-      // Forward residual
+
+      // ── CAS 1 : arête FORWARD (sens normal) ─────────────────────────────
       if (edge.from === current) {
         const capacity = Math.max(1, edge.weight)
         const flow = flowByEdge.get(edge.id) ?? 0
         const residual = capacity - flow
+
         if (residual > 0 && !visited.has(edge.to)) {
           visited.add(edge.to)
-          previousNode.set(edge.to, current)
-          previousEdge.set(edge.to, edge.id)
-          previousDirection.set(edge.to, 1)
+          parentNode.set(edge.to, current)
+          parentEdge.set(edge.to, edge.id)
+          parentDirection.set(edge.to, 1)
           queue.push(edge.to)
         }
       }
 
-      // Backward residual
+      // ── CAS 2 : arête BACKWARD (sens inverse) ───────────────────────────
       if (edge.to === current) {
         const flow = flowByEdge.get(edge.id) ?? 0
+
         if (flow > 0 && !visited.has(edge.from)) {
           visited.add(edge.from)
-          previousNode.set(edge.from, current)
-          previousEdge.set(edge.from, edge.id)
-          previousDirection.set(edge.from, -1)
+          parentNode.set(edge.from, current)
+          parentEdge.set(edge.from, edge.id)
+          parentDirection.set(edge.from, -1)
           queue.push(edge.from)
         }
       }
     }
-
-    if (visited.has(sink)) {
-      break
-    }
   }
 
-  if (!visited.has(sink)) {
-    return null
-  }
+  if (!visited.has(sink)) return null
 
-  const pathEdges: string[] = []
-  let bottleneck = Number.POSITIVE_INFINITY
+  // ── Reconstruction du chemin (même logique que DFS via path[]) ──────────
+  const path: { edgeId: string; direction: 1 | -1; from: NodeId; to: NodeId }[] = []
   let walker = sink
 
   while (walker !== source) {
-    const prev = previousNode.get(walker)
-    const edgeId = previousEdge.get(walker)
-    const direction = previousDirection.get(walker)
-    if (typeof prev !== 'number' || typeof edgeId !== 'string' || typeof direction !== 'number') {
-      return null
-    }
+    const edgeId = parentEdge.get(walker)!
+    const direction = parentDirection.get(walker)!
+    const prev = parentNode.get(walker)!
+    const edge = graph.edges.find(e => e.id === edgeId)!
 
-    const edge = byId.get(edgeId)
-    if (!edge) {
-      return null
-    }
+    path.unshift({ edgeId, direction, from: direction === 1 ? edge.from : edge.to, to: direction === 1 ? edge.to : edge.from })
+    walker = prev
+  }
+
+  // ── Calcul du bottleneck (identique au DFS) ──────────────────────────────
+  let bottleneck = Infinity
+
+  for (const { edgeId, direction } of path) {
+    const edge = graph.edges.find(e => e.id === edgeId)!
 
     const residual =
       direction === 1
@@ -671,11 +642,13 @@ function bfsAugmentingPath(
         : flowByEdge.get(edgeId) ?? 0
 
     bottleneck = Math.min(bottleneck, residual)
-    pathEdges.unshift(edgeId)
-    walker = prev
   }
 
-  return { edgeIds: pathEdges, bottleneck }
+  return {
+    edgeIds: path.map(p => p.edgeId),
+    directions: path.map(p => p.direction),
+    bottleneck,
+  }
 }
 /*
 function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId): CinemaStep[] {
@@ -919,7 +892,7 @@ function buildResidualEdges(
 // FORD-FULKERSON — Construction des étapes visuelles
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId): CinemaStep[] {
+function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId,method: 'DFS' | 'BFS' = 'DFS' ): CinemaStep[] {
   const steps: CinemaStep[] = []
 
   // Flow actuel sur chaque arête
@@ -935,7 +908,7 @@ function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId):
   let pathIndex = 0
 
   // Historique des chemins trouvés
- const pathHistory: Array<{ index: number; bottleneck: number; edgeIds: string[]; edgeLabels: string[] }> = []
+ const pathHistory: Array<{ index: number; bottleneck: number; edgeIds: string[]; edgeLabels: string[] ,}> = []
 
    // ── Mémoriser quelle couleur a été utilisée sur chaque arête ─────────────
   const edgePathColor = new Map<string, string>()
@@ -974,8 +947,10 @@ function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId):
   // On cherche des chemins augmentants jusqu'à ce qu'il n'en existe plus
   while (true) {
 
-    // Recherche d'un chemin augmentant via DFS
-    const augmenting = dfsAugmentingPath(graph, source, target, flowByEdge)
+    // Recherche d'un chemin augmentant via DFS / BFS
+    const augmenting = method === 'BFS'
+      ? bfsAugmentingPath(graph, source, target, flowByEdge)
+      : dfsAugmentingPath(graph, source, target, flowByEdge)
 
     // Plus aucun chemin → le flow maximum est atteint → on sort
     if (augmenting === null) break
@@ -2087,6 +2062,7 @@ export function buildCinemaProgram(
   algorithm: CinemaAlgorithm,
   source: NodeId,
   target?: NodeId,
+  options?: { maxFlowMethod?: 'DFS' | 'BFS' }  // ← ajouter
 ): CinemaProgram {
   const steps: CinemaStep[] = (() => {
     switch (algorithm) {
@@ -2101,7 +2077,7 @@ export function buildCinemaProgram(
       case 'Kruskals':
         return buildKruskalsProgram(graph)
       case 'MaxFlow':
-        return buildMaxFlowProgram(graph, source, typeof target === 'number' ? target : source)
+        return buildMaxFlowProgram(graph, source, typeof target === 'number' ? target : source, options?.maxFlowMethod ?? 'DFS' )
       case 'ConnectedComponents':
         return buildConnectedComponentsProgram(graph)
       case 'SpanningForest':
