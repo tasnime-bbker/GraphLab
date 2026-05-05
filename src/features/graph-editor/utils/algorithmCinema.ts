@@ -597,73 +597,73 @@ function bfsAugmentingPath(
   source: NodeId,
   sink: NodeId,
   flowByEdge: Map<string, number>,
-): { edgeIds: string[]; bottleneck: number } | null {
-  const previousNode = new Map<NodeId, NodeId>()
-  const previousEdge = new Map<NodeId, string>()
-  const previousDirection = new Map<NodeId, 1 | -1>()
-  const queue: NodeId[] = [source]
-  const visited = new Set<NodeId>([source])
-  const byId = edgeById(graph)
+): { edgeIds: string[]; directions: (1 | -1)[]; bottleneck: number } | null {
 
+  const visited = new Set<NodeId>([source])
+  const parentNode = new Map<NodeId, NodeId>()
+  const parentEdge = new Map<NodeId, string>()
+  const parentDirection = new Map<NodeId, 1 | -1>()
+  const queue: NodeId[] = [source]
+
+  // ── BFS (seule différence avec DFS : queue FIFO au lieu de pile récursive) ──
   while (queue.length > 0) {
-    const current = queue.shift()
-    if (typeof current !== 'number') {
-      continue
-    }
+    const current = queue.shift()!
+
+    if (current === sink) break
 
     for (const edge of graph.edges) {
-      // Forward residual
+
+      // ── CAS 1 : arête FORWARD (sens normal) ─────────────────────────────
       if (edge.from === current) {
         const capacity = Math.max(1, edge.weight)
         const flow = flowByEdge.get(edge.id) ?? 0
         const residual = capacity - flow
+
         if (residual > 0 && !visited.has(edge.to)) {
           visited.add(edge.to)
-          previousNode.set(edge.to, current)
-          previousEdge.set(edge.to, edge.id)
-          previousDirection.set(edge.to, 1)
+          parentNode.set(edge.to, current)
+          parentEdge.set(edge.to, edge.id)
+          parentDirection.set(edge.to, 1)
           queue.push(edge.to)
         }
       }
 
-      // Backward residual
+      // ── CAS 2 : arête BACKWARD (sens inverse) ───────────────────────────
       if (edge.to === current) {
         const flow = flowByEdge.get(edge.id) ?? 0
+
         if (flow > 0 && !visited.has(edge.from)) {
           visited.add(edge.from)
-          previousNode.set(edge.from, current)
-          previousEdge.set(edge.from, edge.id)
-          previousDirection.set(edge.from, -1)
+          parentNode.set(edge.from, current)
+          parentEdge.set(edge.from, edge.id)
+          parentDirection.set(edge.from, -1)
           queue.push(edge.from)
         }
       }
     }
-
-    if (visited.has(sink)) {
-      break
-    }
   }
 
-  if (!visited.has(sink)) {
-    return null
-  }
+  if (!visited.has(sink)) return null
 
-  const pathEdges: string[] = []
-  let bottleneck = Number.POSITIVE_INFINITY
+  // ── Reconstruction du chemin (même logique que DFS via path[]) ──────────
+  const path: { edgeId: string; direction: 1 | -1; from: NodeId; to: NodeId }[] = []
   let walker = sink
 
   while (walker !== source) {
-    const prev = previousNode.get(walker)
-    const edgeId = previousEdge.get(walker)
-    const direction = previousDirection.get(walker)
-    if (typeof prev !== 'number' || typeof edgeId !== 'string' || typeof direction !== 'number') {
-      return null
-    }
+    const edgeId = parentEdge.get(walker)!
+    const direction = parentDirection.get(walker)!
+    const prev = parentNode.get(walker)!
+    const edge = graph.edges.find(e => e.id === edgeId)!
 
-    const edge = byId.get(edgeId)
-    if (!edge) {
-      return null
-    }
+    path.unshift({ edgeId, direction, from: direction === 1 ? edge.from : edge.to, to: direction === 1 ? edge.to : edge.from })
+    walker = prev
+  }
+
+  // ── Calcul du bottleneck (identique au DFS) ──────────────────────────────
+  let bottleneck = Infinity
+
+  for (const { edgeId, direction } of path) {
+    const edge = graph.edges.find(e => e.id === edgeId)!
 
     const residual =
       direction === 1
@@ -671,11 +671,13 @@ function bfsAugmentingPath(
         : flowByEdge.get(edgeId) ?? 0
 
     bottleneck = Math.min(bottleneck, residual)
-    pathEdges.unshift(edgeId)
-    walker = prev
   }
 
-  return { edgeIds: pathEdges, bottleneck }
+  return {
+    edgeIds: path.map(p => p.edgeId),
+    directions: path.map(p => p.direction),
+    bottleneck,
+  }
 }
 /*
 function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId): CinemaStep[] {
@@ -919,7 +921,7 @@ function buildResidualEdges(
 // FORD-FULKERSON — Construction des étapes visuelles
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId): CinemaStep[] {
+function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId,method: 'DFS' | 'BFS' = 'DFS' ): CinemaStep[] {
   const steps: CinemaStep[] = []
 
   // Flow actuel sur chaque arête
@@ -935,7 +937,7 @@ function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId):
   let pathIndex = 0
 
   // Historique des chemins trouvés
- const pathHistory: Array<{ index: number; bottleneck: number; edgeIds: string[]; edgeLabels: string[] }> = []
+ const pathHistory: Array<{ index: number; bottleneck: number; edgeIds: string[]; edgeLabels: string[] ,}> = []
 
    // ── Mémoriser quelle couleur a été utilisée sur chaque arête ─────────────
   const edgePathColor = new Map<string, string>()
@@ -974,8 +976,10 @@ function buildMaxFlowProgram(graph: GraphState, source: NodeId, target: NodeId):
   // On cherche des chemins augmentants jusqu'à ce qu'il n'en existe plus
   while (true) {
 
-    // Recherche d'un chemin augmentant via DFS
-    const augmenting = dfsAugmentingPath(graph, source, target, flowByEdge)
+    // Recherche d'un chemin augmentant via DFS / BFS
+    const augmenting = method === 'BFS'
+      ? bfsAugmentingPath(graph, source, target, flowByEdge)
+      : dfsAugmentingPath(graph, source, target, flowByEdge)
 
     // Plus aucun chemin → le flow maximum est atteint → on sort
     if (augmenting === null) break
@@ -2087,6 +2091,7 @@ export function buildCinemaProgram(
   algorithm: CinemaAlgorithm,
   source: NodeId,
   target?: NodeId,
+  options?: { maxFlowMethod?: 'DFS' | 'BFS' }  // ← ajouter
 ): CinemaProgram {
   const steps: CinemaStep[] = (() => {
     switch (algorithm) {
@@ -2101,7 +2106,7 @@ export function buildCinemaProgram(
       case 'Kruskals':
         return buildKruskalsProgram(graph)
       case 'MaxFlow':
-        return buildMaxFlowProgram(graph, source, typeof target === 'number' ? target : source)
+        return buildMaxFlowProgram(graph, source, typeof target === 'number' ? target : source, options?.maxFlowMethod ?? 'DFS' )
       case 'ConnectedComponents':
         return buildConnectedComponentsProgram(graph)
       case 'SpanningForest':

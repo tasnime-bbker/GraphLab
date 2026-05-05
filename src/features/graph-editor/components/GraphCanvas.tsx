@@ -471,6 +471,7 @@ export function GraphCanvas() {
   const [edgeDraftDirected, setEdgeDraftDirected] = useState(graph.directed)
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
   const [isScreenshotMode, setIsScreenshotMode] = useState(false)
+  const [maxFlowMethod, setMaxFlowMethod] = useState<'DFS' | 'BFS'>('DFS')
 
   useEffect(() => {
     const onStatus = (e: any) => setIsCommandPaletteOpen(e.detail.open)
@@ -554,6 +555,7 @@ export function GraphCanvas() {
       cinemaProgram.algorithm,
       cinemaProgram.source,
       cinemaProgram.target,
+        { maxFlowMethod }
     ).graphSignature
 
     if (nextSignature !== cinemaProgram.graphSignature) {
@@ -561,7 +563,7 @@ export function GraphCanvas() {
       setCinemaPlaying(false)
       setCinemaStepIndex(0)
     }
-  }, [cinemaProgram, graph])
+  }, [cinemaProgram, graph,maxFlowMethod])
 
   useEffect(() => {
     return () => {
@@ -992,6 +994,7 @@ function exportFlowResult() {
       cinemaAlgorithm,
       cinemaSourceNode,
       cinemaTargetNode ?? undefined,
+      { maxFlowMethod }  // ← ajouter l'option de méthode pour MaxFlow
     )
 
     setCinemaProgram(program)
@@ -1478,6 +1481,48 @@ function exportFlowResult() {
             </button>
           </div>
         )}
+         {/* ── Toggle DFS/BFS — visible uniquement pour MaxFlow ────────── */}
+        {cinemaAlgorithm === 'MaxFlow' && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-semibold" style={{ color: 'var(--app-muted)' }}>
+              Méthode :
+            </span>
+            <button
+              type="button"
+              onClick={() => {setMaxFlowMethod('DFS')
+                 setCinemaProgram(null)      // ← AJOUTER
+        setCinemaStepIndex(0)       // ← AJOUTER
+        setCinemaPlaying(false)  }   // ← AJOUTER
+              }
+              className="px-2 py-0.5 text-xs rounded font-semibold transition-colors"
+              style={{
+                backgroundColor: maxFlowMethod === 'DFS' ? 'var(--app-accent)' : 'transparent',
+                color: maxFlowMethod === 'DFS' ? 'var(--app-surface-strong)' : 'var(--app-text)',
+                border: '1px solid var(--app-border)'
+              }}
+            >
+              Ford-Fulkerson (DFS)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMaxFlowMethod('BFS')
+                setCinemaProgram(null)
+                setCinemaStepIndex(0)
+                setCinemaPlaying(false)
+              }}
+              className="px-2 py-0.5 text-xs rounded font-semibold transition-colors"
+              style={{
+                backgroundColor: maxFlowMethod === 'BFS' ? 'var(--app-accent)' : 'transparent',
+                color: maxFlowMethod === 'BFS' ? 'var(--app-surface-strong)' : 'var(--app-text)',
+                border: '1px solid var(--app-border)'
+              }}
+            >
+              Edmonds-Karp (BFS)
+            </button>
+          </div>
+        )}
+        {/* ─────────────────────────────────────────────────────────────── */}
 
         <AlgorithmCinemaPanel
           nodes={graph.nodes}
